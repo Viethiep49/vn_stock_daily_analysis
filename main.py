@@ -97,19 +97,25 @@ def main():
     exchange = info.get('exchange', '')
 
     print(f"🏢 Công ty: {company} | Ngành: {industry} | Sàn: {exchange}")
-    print(
-        f"💰 Giá:    {price_vnd:,.0f}đ  ({change_vnd:+,.0f}đ / {change_pct:+.2f}%)")
-    print(f"📦 KL giao dịch: {quote.get('volume', 0):,.0f} cổ phiếu")
-    if tech:
-        print(f"📈 Kỹ thuật: {tech}")
+    print(f"💰 Giá:    {price_vnd:,.0f}đ  ({change_vnd:+,.0f}đ / {change_pct:+.2f}%)")
+    
+    report = result.get("report")
+    if report:
+        print(f"⭐ Score:   {report.composite:.1f}/100")
+        print(f"🚩 Signal:  {report.final_signal.value}")
+        print("\nSCORECARD BREAKDOWN:")
+        print(f"{'Strategy':<25} | {'Score':<5} | {'Signal':<10} | {'Reason'}")
+        print("-" * 70)
+        for card in report.cards:
+            print(f"{card.strategy_name:<25} | {card.score:<5} | {card.signal.value:<10} | {card.reason}")
 
     if cb and cb.get('warning'):
-        print(f"⚠️  Cảnh báo: {cb.get('warning')}")
+        print(f"\n⚠️  Cảnh báo: {cb.get('warning')}")
 
-    print("-" * 50)
-    print("🤖 LLM Analysis:")
+    print("-" * 70)
+    print("🤖 AI NARRATIVE Analysis:")
     print(result.get("llm_analysis", "No analysis found"))
-    print("-" * 50)
+    print("-" * 70)
     print("✅ Trạng thái: Hoàn thành")
 
     if not args.dry_run:
