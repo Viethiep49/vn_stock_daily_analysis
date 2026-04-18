@@ -350,12 +350,12 @@ Giá hiện tại: {quote}
 
 ---
 
-## 9. Câu hỏi mở (cần user xác nhận khi review)
+## 9. Quyết định (đã chốt với user 2026-04-18)
 
-1. **Weight khởi điểm**: tất cả = 1.0, hay bạn muốn set tay ngay đầu (ví dụ MA Crossover = 1.2, RSI = 0.8)?
-2. **Bậc thang signal**: đang chọn 80/65/40/20. Bạn muốn đổi không (ví dụ chặt hơn: 85/70/45/25)?
-3. **LLM model**: vẫn dùng `LLM_PRIMARY_MODEL` hiện tại (Gemini 2.0 flash) hay chuyển sang model reasoning mạnh hơn cho narrative?
-4. **Backward compat**: mình đề xuất giữ dict adapter cho Notifier trong 1 kỳ chuyển đổi. Bạn muốn cắt đứt luôn (breaking) hay giữ adapter?
+1. **Weight khởi điểm**: tất cả = `1.0`. Tinh chỉnh sau khi có backtest.
+2. **Bậc thang signal**: 80 / 65 / 40 / 20 (đã chọn).
+3. **LLM model**: giữ nguyên `LLM_PRIMARY_MODEL` hiện tại (Gemini 2.0 flash). Có thể đổi qua env không cần sửa code.
+4. **Backward compat Notifier**: giữ dict adapter trong kỳ chuyển đổi; task cleanup tách riêng khi toàn pipeline migrate xong.
 
 ---
 
