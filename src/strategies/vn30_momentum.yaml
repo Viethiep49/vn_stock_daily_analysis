@@ -1,0 +1,14 @@
+name: "VN30 Momentum"
+description: "Chiến lược động lượng chuyên biệt cho nhóm cổ phiếu Bluechips (VN30)."
+indicators:
+  - name: MACD
+    type: MACD
+  - name: RSI
+    type: RSI
+parameters:
+  min_volume: 1000000
+prompt_template: >
+  Chiến lược áp dụng cho nhóm VN30 (Dòng tiền lớn):
+  - Quan sát MACD histogram, động lượng có đang gia tăng dương không?
+  - RSI duy trì trên mức 50 cho thấy lực mua ổn định.
+  - Hãy kiểm tra xem khối lượng có xác nhận xu hướng không.

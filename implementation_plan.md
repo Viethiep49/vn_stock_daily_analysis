@@ -807,28 +807,41 @@ async def health_check():
 ## Phase 1 MVP Checklist
 
 ### 🔐 Setup & Configuration
-- [ ] Tạo tài khoản vnstocks.com → lấy `VNSTOCK_API_KEY`
-- [ ] Copy `.env.example` → `.env` và điền keys.
-- [ ] Test connection với vnstock.
+- [x] Tạo tài khoản vnstocks.com → lấy `VNSTOCK_API_KEY`
+- [x] Copy `.env.example` → `.env` và điền keys.
+- [x] Test connection với vnstock.
 
 ### 🧪 Testing Data Providers & Utils
-- [ ] Test `VNStockValidator` với các mã CK khác nhau.
-- [ ] Test `CircuitBreakerHandler` cảnh báo trần/sàn.
-- [ ] Test `VNStockProvider` với fallback + local caching.
+- [x] Test `VNStockValidator` với các mã CK khác nhau.
+- [x] Test `CircuitBreakerHandler` cảnh báo trần/sàn.
+- [x] Test `VNStockProvider` với fallback + local caching.
 
 ### 🤖 LLM Integration
-- [ ] Test `LiteLLMClient` với prompt schema JSON rõ ràng.
-- [ ] Verify caching response của LLM.
-- [ ] Test fallback: set model sai → kiểm tra chuyển sang backup model.
+- [x] Test `LiteLLMClient` với prompt schema JSON rõ ràng.
+- [x] Verify caching response của LLM.
+- [x] Test fallback: set model sai → kiểm tra chuyển sang backup model.
 
 ### 📊 Core Analyzer MVP
-- [ ] Chạy `python main.py --symbol VNM.HO --dry-run`
-- [ ] Xử lý degraded mode (nếu API fail).
-- [ ] Verify output có đủ: Thông số kĩ thuật, LLM result, cảnh báo rủi ro.
+- [x] Chạy `python main.py --symbol VNM.HO --dry-run`
+- [x] Xử lý degraded mode (nếu API fail).
+- [x] Verify output có đủ: Thông số kĩ thuật, LLM result, cảnh báo rủi ro.
 
 ### 🧹 Code Quality
-- [ ] Add type hints cho các function.
-- [ ] Run linter (flake8) & Unit tests.
+- [x] Add type hints cho các function.
+- [x] Run linter (flake8) & Unit tests.
+
+## Phase 2 Checklist
+
+### 📣 Notification
+- [x] Triển khai `src/notifier/base.py`, `telegram_bot.py`, `discord_bot.py`.
+- [x] Tạo func `send_report()` chuyển JSON thành Markdown/Rich Embeds đẹp mắt.
+
+### 🧠 Strategies Rules
+- [x] Viết 6 file YAML (MA, RSI, Volume, Support/Resistance, Bollinger, VN30).
+
+### ⏰ Scheduling & Pipeline
+- [x] Cập nhật `main.py` nhận list các symbol, mode schedule.
+- [x] Set up `.github/workflows/daily_analysis.yml`.
 ```
 
 ---

@@ -1,0 +1,13 @@
+name: "Volume Breakout"
+description: "Chiến lược đột phá khối lượng giao dịch."
+indicators:
+  - name: VolMA
+    type: SMA
+    source: volume
+    period: 20
+parameters:
+  volume_multiplier: 1.5
+prompt_template: >
+  Nếu khối lượng giao dịch hiện tại vượt gấp {volume_multiplier} lần trung bình khối lượng 20 phiên:
+  - Đi kèm với giá tăng mạnh -> Breakout MUA.
+  - Đi kèm với giá giảm mạnh -> Breakout BÁN (tháo cống).

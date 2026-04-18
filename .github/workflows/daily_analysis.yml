@@ -1,0 +1,53 @@
+name: VN Stock Daily Analysis
+
+on:
+  schedule:
+    # Chạy vào 15:00 giờ VN (08:00 UTC) từ Thứ 2 đến Thứ 6
+    - cron: '0 8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: 'Mã cổ phiếu (ví dụ: VNM, FPT.HO)'
+        required: false
+        type: string
+        default: 'VNM.HO'
+      force_run:
+        description: 'Bỏ qua check ngày giao dịch'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Run daily analysis
+        env:
+          VNSTOCK_API_KEY: ${{ secrets.VNSTOCK_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            python main.py --symbol ${{ inputs.symbol }} ${{ inputs.force_run == true && '--force-run' || '' }}
+          else
+            # Default schedule mode will analyze a preset list in future, or just VNM for now
+            python main.py --symbol VNM.HO --schedule
+          fi

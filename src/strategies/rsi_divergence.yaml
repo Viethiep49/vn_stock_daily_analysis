@@ -1,0 +1,14 @@
+name: "RSI Divergence"
+description: "Chiến lược phân kỳ RSI."
+indicators:
+  - name: RSI
+    type: RSI
+    period: 14
+parameters:
+  overbought: 70
+  oversold: 30
+prompt_template: >
+  Hãy tìm kiếm sự phân kỳ giữa giá và chỉ số RSI ({indicators}):
+  - Giá tạo đáy mới thấp hơn nhưng RSI tạo đáy mới cao hơn: Phân kỳ dương -> Tín hiệu MUA.
+  - Giá tạo đỉnh mới cao hơn nhưng RSI tạo đỉnh mới thấp hơn: Phân kỳ âm -> Tín hiệu BÁN.
+  Tình trạng quá bán < {oversold} hoặc quá mua > {overbought} cũng cần lưu ý.

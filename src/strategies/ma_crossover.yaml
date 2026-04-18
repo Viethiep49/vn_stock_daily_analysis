@@ -1,0 +1,16 @@
+name: "MA Crossover"
+description: "Chiến lược dựa trên sự giao cắt của hai đường trung bình động (Moving Average)."
+indicators:
+  - name: MA20
+    type: SMA
+    period: 20
+  - name: MA50
+    type: SMA
+    period: 50
+parameters:
+  fast_ma: 20
+  slow_ma: 50
+prompt_template: >
+  Xem xét dữ liệu giá và các đường MA: {indicators}.
+  Nếu đường MA ngắn hạn cắt lên đường MA dài hạn -> Tín hiệu MUA.
+  Nếu đường MA ngắn hạn cắt xuống đường MA dài hạn -> Tín hiệu BÁN.

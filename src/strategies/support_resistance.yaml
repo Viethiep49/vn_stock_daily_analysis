@@ -1,0 +1,13 @@
+name: "Support Resistance"
+description: "Phân tích vùng Hỗ trợ (Support) và Kháng cự (Resistance)."
+indicators:
+  - name: PriceHistory
+    type: LocalExtremes
+parameters:
+  lookback_period: 60
+  tolerance_percent: 2
+prompt_template: >
+  Xác định các vùng hỗ trợ và kháng cự cứng trong lịch sử {lookback_period} phiên gần nhất.
+  - Nếu giá đang bật lên từ vùng hỗ trợ -> MUA.
+  - Nếu giá bị từ chối tại vùng kháng cự -> BÁN.
+  Giá vượt dứt khoát kháng cự sẽ mở ra xu hướng tăng mới.

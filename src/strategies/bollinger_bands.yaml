@@ -1,0 +1,15 @@
+name: "Bollinger Bands"
+description: "Giao dịch dựa trên dải Bollinger Bands."
+indicators:
+  - name: BBands
+    type: BollingerBands
+    period: 20
+    std_dev: 2
+parameters:
+  bb_period: 20
+  std_dev: 2
+prompt_template: >
+  Xem xét vị trí giá so với dải Bollinger ({indicators}):
+  - Giá chạm dải dưới (Lower Band) và bật lên -> MUA.
+  - Giá chạm dải trên (Upper Band) và bị dội xuống -> BÁN.
+  Lưu ý sự co thắt (Squeeze) cho thấy sắp có biến động mạnh.
