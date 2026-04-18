@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from datetime import datetime
 from src.data_provider.vnstock_provider import VNStockProvider
 from src.data_provider.fallback_router import FallbackRouter
@@ -7,24 +7,35 @@ from src.utils.validator import VNStockValidator
 from src.market.circuit_breaker import CircuitBreakerHandler
 from src.core.llm_client import LiteLLMClient
 
+# New Scoring Engine imports
+from src.scoring.indicators import IndicatorEngine
+from src.scoring.strategy_runner import StrategyRunner
+from src.scoring.aggregator import ScoreAggregator
+from src.scoring.explainer import LLMExplainer
+
 logger = logging.getLogger(__name__)
 
 
 class Analyzer:
-    """Core orchestrator cho phân tích một cổ phiếu cụ thể"""
+    """Core orchestrator for stock analysis using the Multi-Angle Scoring Engine."""
 
-    def __init__(self):
+    def __init__(self, strategy_dir: str = "src/strategies"):
         # Setup data providers
         vnstock = VNStockProvider()
-        # fallback can have more providers
         self.router = FallbackRouter([vnstock])
 
         # Setup tools
         self.circuit_breaker = CircuitBreakerHandler()
         self.llm = LiteLLMClient()
 
+        # Setup Scoring Pipeline
+        self.indicator_engine = IndicatorEngine()
+        self.strategy_runner = StrategyRunner.load_dir(strategy_dir)
+        self.aggregator = ScoreAggregator()
+        self.explainer = LLMExplainer(self.llm)
+
     def analyze(self, symbol: str) -> Dict[str, Any]:
-        """Quy trình phân tích chính"""
+        """The main analysis pipeline."""
         logger.info(f"Bắt đầu phân tích cho mã {symbol}")
 
         # 1. Validate
@@ -34,86 +45,68 @@ class Analyzer:
 
         normalized_symbol = VNStockValidator.normalize(symbol)
 
-        # 2. Fetch data
         try:
+            # 2. Fetch data (Info & History)
             info = self.router.execute_with_fallback(
                 "get_stock_info", normalized_symbol)
             quote = self.router.execute_with_fallback(
                 "get_realtime_quote", normalized_symbol)
 
-            # Lấy 3 tháng gần nhất để tính indicators
-            three_months_ago = (datetime.today(
-            ) - __import__('datetime').timedelta(days=90)).strftime('%Y-%m-%d')
+            # Need 200 days for MA200 support
+            start_date = (datetime.today() - __import__('datetime').timedelta(days=365)).strftime('%Y-%m-%d')
             df = self.router.execute_with_fallback(
                 "get_historical_data",
                 normalized_symbol,
-                three_months_ago,
+                start_date,
                 datetime.today().strftime('%Y-%m-%d'))
 
-            # 3. Circuit breaker — dùng giá đóng cửa hôm qua làm tham chiếu
-            cb_status = None
-            if not df.empty and len(df) >= 2 and 'close' in df.columns:
-                prev_close = float(df.iloc[-2]['close'])
-                current_price = quote.get('price', 0)
-                if prev_close > 0 and current_price > 0:
-                    self.circuit_breaker.set_reference_price(
-                        normalized_symbol, prev_close)
-                    cb_status = self.circuit_breaker.check_limit_status(
-                        normalized_symbol, current_price)
+            if df.empty or len(df) < 50:
+                return {
+                    "symbol": normalized_symbol,
+                    "status": "failed",
+                    "error": "Dữ liệu lịch sử quá ít để phân tích kỹ thuật."
+                }
 
-            # 4. Tính thêm chỉ số kỹ thuật đơn giản từ lịch sử
-            tech_summary = ""
-            if not df.empty and len(df) >= 20 and 'close' in df.columns:
-                closes = df['close'].astype(float)
-                ma5 = closes.tail(5).mean()
-                ma20 = closes.tail(20).mean()
-                avg_vol = df['volume'].tail(
-                    20).mean() if 'volume' in df.columns else 0
-                latest_vol = quote.get('volume', 0)
-                vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1
+            # 3. Indicator Engine
+            indicators = self.indicator_engine.compute(df)
 
-                tech_summary = (
-                    f"MA5={ma5*1000:,.0f}đ | MA20={ma20*1000:,.0f}đ | "
-                    f"KL hôm nay/TB20: {vol_ratio:.1f}x"
-                )
+            # 4. Strategy Runner
+            cards = self.strategy_runner.run(indicators)
 
-            # 5. Build LLM context chi tiết
-            context = f"""
-Mã chứng khoán: {normalized_symbol}
-Công ty: {info.get('company_name', normalized_symbol)}
-Ngành: {info.get('industry', 'N/A')} | Sàn: {info.get('exchange', 'HOSE')}
-Website: {info.get('website', '')}
+            # 5. Circuit Breaker
+            prev_close = indicators.prev_close
+            current_price = quote.get('price', indicators.close)
+            self.circuit_breaker.set_reference_price(normalized_symbol, prev_close)
+            cb_status = self.circuit_breaker.check_limit_status(normalized_symbol, current_price)
 
-Giá đóng cửa gần nhất: {quote.get('price'):,.0f}đ
-Thay đổi: {quote.get('change', 0):+.0f}đ ({quote.get('change_pct', 0):+.2f}%)
-OHLC: Mở {quote.get('open', 0):,.0f} | Cao {quote.get('high', 0):,.0f} | Thấp {quote.get('low', 0):,.0f}
-Khối lượng: {quote.get('volume', 0):,.0f} cổ phiếu
+            # 6. Score Aggregation
+            report = self.aggregator.aggregate(cards)
+            report.symbol = normalized_symbol
+            report.info = info
+            report.quote = quote
+            report.circuit_breaker = cb_status
 
-Chỉ số kỹ thuật (từ {len(df)} phiên): {tech_summary}
-Cảnh báo rủi ro: {cb_status.get('warning') if cb_status else 'Không có cảnh báo trần/sàn'}
-"""
+            # 7. AI Explanation
+            narrative = self.explainer.explain(report)
+            report.narrative = narrative
 
-            prompt = (
-                f"Bạn là chuyên gia phân tích chứng khoán Việt Nam.\n"
-                f"Dữ liệu thực tế hôm nay:\n{context}\n\n"
-                f"Hãy phân tích ngắn gọn (3-5 câu mỗi mục):\n"
-                f"1. Đánh giá xu hướng ngắn hạn\n"
-                f"2. Rủi ro cần chú ý\n"
-                f"3. Khuyến nghị: Mua / Giữ / Bán và lý do"
-            )
-
-            llm_result = self.llm.generate(prompt)
-
+            # 8. Result Packaging
+            # We return a dict that matches what App.py and Notifier expects
+            # plus the new report object
             return {
                 "symbol": normalized_symbol,
                 "status": "success",
                 "info": info,
                 "quote": quote,
+                "report": report,  # The new full object
+                "llm_analysis": narrative,  # For backward compatibility with existing dashboard
                 "circuit_breaker": cb_status,
-                "tech_summary": tech_summary,
-                "history_rows": len(df),
-                "llm_analysis": llm_result
+                "indicators": indicators,
             }
+
+        except Exception as e:
+            logger.error(f"Error analyzing {symbol}: {e}")
+            return {"symbol": symbol, "error": str(e), "status": "failed"}
 
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")
