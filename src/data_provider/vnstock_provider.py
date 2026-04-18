@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class VNStockProvider(BaseDataProvider):
-    """Data provider sử dụng vnstock v3.5+ với nguồn KBS (miễn phí, ổn định)"""
+    """Data provider sử dụng vnstock v3.5+ với nguồn KBS"""
 
     DEFAULT_SOURCE = 'KBS'
 
