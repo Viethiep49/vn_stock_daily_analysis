@@ -28,7 +28,8 @@ class TelegramNotifier(BaseNotifier):
         }
 
         try:
-            response = requests.post(url, json=payload)
+            # Use short timeout to avoid blocking
+            response = requests.post(url, json=payload, timeout=10)
             response.raise_for_status()
             logger.info("Sent message to Telegram successfully.")
             return True
@@ -42,13 +43,24 @@ class TelegramNotifier(BaseNotifier):
         quote = report_data.get('quote', {})
         cb = report_data.get('circuit_breaker', {})
         opinion = report_data.get('opinion')
+        llm = report_data.get('llm_analysis', 'No analysis')
+        
+        # New Scoring Engine data
+        report = report_data.get('report')
+        score_text = ""
+        if report:
+            score_text = f"⭐ *Score*: `{report.composite:.1f}/100` | *Signal*: `{report.final_signal.value}`\n"
+            score_text += "\n*Chi tiết chiến lược:*\n"
+            for card in report.cards:
+                score_text += f"- {card.strategy_name}: `{card.score}` | {card.signal.value}\n"
 
         message = f"📊 *VN STOCK REPORT: {symbol}*\n\n"
         message += f"🏢 *Công ty*: {info.get('company_name')} | {info.get('industry')}\n"
-        message += f"💰 *Giá*: {quote.get('price'):,.0f} đ\n"
+        message += f"💰 *Giá*: {quote.get('price', 0):,.0f} đ\n"
+        message += score_text
 
         if cb and cb.get('warning'):
-            message += f"⚠️ *Cảnh báo*: {cb.get('warning')}\n"
+            message += f"\n⚠️ *Cảnh báo*: {cb.get('warning')}\n"
 
         if opinion:
             message += f"\n🎯 *Tín hiệu*: `{opinion.get('signal')}` ({opinion.get('confidence')*100:.0f}%)\n"
@@ -66,8 +78,7 @@ class TelegramNotifier(BaseNotifier):
             
             message += f"\n📝 *Phân tích*:\n{opinion.get('reasoning')}\n"
         else:
-            llm = report_data.get('llm_analysis', 'No analysis')
-            message += f"\n🤖 *Nhận định LLM*:\n{llm}\n"
+            message += f"\n🤖 *Nhận định AI*:\n{llm}\n"
 
         message += "\n---"
 

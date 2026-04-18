@@ -41,6 +41,16 @@ class DiscordNotifier(BaseNotifier):
         quote = report_data.get('quote', {})
         cb = report_data.get('circuit_breaker', {})
         opinion = report_data.get('opinion')
+        
+        # New Scoring Engine data
+        report = report_data.get('report')
+        score_field = None
+        if report:
+            score_field = {
+                "name": "⭐ Score & Signal",
+                "value": f"**{report.composite:.1f}/100** | **{report.final_signal.value}**",
+                "inline": True
+            }
 
         if opinion:
             description = f"**💡 Lời khuyên:** _{opinion.get('operation_advice')}_\n\n"
@@ -54,7 +64,7 @@ class DiscordNotifier(BaseNotifier):
                 },
                 {
                     "name": "💰 Giá Cập Nhật",
-                    "value": f"{quote.get('price'):,.0f} đ",
+                    "value": f"{quote.get('price', 0):,.0f} đ",
                     "inline": True
                 },
                 {
@@ -95,7 +105,7 @@ class DiscordNotifier(BaseNotifier):
                 },
                 {
                     "name": "💰 Giá Cập Nhật",
-                    "value": f"{quote.get('price'):,.0f} đ",
+                    "value": f"{quote.get('price', 0):,.0f} đ",
                     "inline": True
                 }
             ]
@@ -105,6 +115,10 @@ class DiscordNotifier(BaseNotifier):
             "description": description,
             "fields": fields
         }
+        
+        if score_field:
+            # Insert at second position if possible or just append
+            embed["fields"].insert(1, score_field)
 
         if cb and cb.get('warning'):
             embed["fields"].append({
