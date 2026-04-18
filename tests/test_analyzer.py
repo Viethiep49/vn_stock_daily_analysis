@@ -16,11 +16,11 @@ from src.core.analyzer import Analyzer
 
 @pytest.fixture
 def mock_df():
-    """DataFrame lịch sử 30 phiên giả lập"""
+    """DataFrame lịch sử 60 phiên giả lập (cần tối thiểu 50 cho IndicatorEngine)"""
     data = [
-        {'date': f'2026-03-{i:02d}', 'open': 60.0+i*0.1, 'high': 62.0+i*0.1,
-         'low': 59.0+i*0.1, 'close': 61.0+i*0.1, 'volume': 2_000_000 + i * 50_000}
-        for i in range(1, 31)
+        {'date': f'2026-03-{i:02d}', 'open': 61.0, 'high': 61.0,
+         'low': 61.0, 'close': 61.0, 'volume': 2_000_000}
+        for i in range(1, 61)
     ]
     return pd.DataFrame(data)
 
@@ -46,7 +46,10 @@ def mock_info():
 @pytest.fixture
 def analyzer_with_mocks(mock_df, mock_quote, mock_info):
     """Analyzer với data provider và LLM hoàn toàn bị mock"""
-    analyzer = Analyzer.__new__(Analyzer)
+    with patch("src.scoring.strategy_runner.StrategyRunner.load_dir") as mock_load:
+        # Prevent actually loading YAMLs during tests
+        mock_load.return_value = MagicMock()
+        analyzer = Analyzer()
 
     mock_router = MagicMock()
     mock_router.execute_with_fallback.side_effect = lambda method, *args: {
@@ -58,10 +61,16 @@ def analyzer_with_mocks(mock_df, mock_quote, mock_info):
     mock_llm = MagicMock()
     mock_llm.generate.return_value = "VNM có xu hướng tăng. Khuyến nghị GIỮ."
 
-    from src.market.circuit_breaker import CircuitBreakerHandler
+    from src.scoring.aggregator import ScoreCard
+    from src.scoring.signals import Signal
+    analyzer.strategy_runner.run.return_value = [
+        ScoreCard("Test", 60, Signal.NEUTRAL, "test", 1.0, 0)
+    ]
+
     analyzer.router = mock_router
-    analyzer.circuit_breaker = CircuitBreakerHandler()
     analyzer.llm = mock_llm
+    # Wire up explainer with the mock llm
+    analyzer.explainer.llm = mock_llm
 
     return analyzer
 
@@ -119,19 +128,15 @@ class TestAnalyzerSuccess:
         assert 'llm_analysis' in result
         assert len(result['llm_analysis']) > 0
 
-    def test_result_has_tech_summary(self, analyzer_with_mocks):
+    def test_result_has_report(self, analyzer_with_mocks):
         result = analyzer_with_mocks.analyze("VNM.HO")
-        assert 'tech_summary' in result
-        assert "MA5" in result['tech_summary']
-        assert "MA20" in result['tech_summary']
+        assert 'report' in result
+        assert result['report'].composite >= 0
 
-    def test_tech_summary_includes_volume_ratio(self, analyzer_with_mocks):
+    def test_result_has_indicators(self, analyzer_with_mocks):
         result = analyzer_with_mocks.analyze("VNM.HO")
-        assert "KL" in result['tech_summary']
-
-    def test_history_rows_counted(self, analyzer_with_mocks):
-        result = analyzer_with_mocks.analyze("VNM.HO")
-        assert result.get('history_rows', 0) > 0
+        assert 'indicators' in result
+        assert result['indicators'].MA20 is not None
 
     def test_llm_generate_called_once(self, analyzer_with_mocks):
         analyzer_with_mocks.analyze("VNM.HO")
