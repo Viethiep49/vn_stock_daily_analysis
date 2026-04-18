@@ -61,7 +61,7 @@ class RuleEvaluator:
             if tok in expr:
                 raise ValueError(f"Expression contains blocked token: {tok!r}")
 
-        interp = Interpreter(no_print=True, minimal=True)
+        interp = Interpreter(no_print=True)
         # Reject None-valued or missing variables by short-circuiting to False
         safe_ctx = {k: v for k, v in context.items() if v is not None}
         for k, v in safe_ctx.items():
@@ -82,3 +82,68 @@ class RuleEvaluator:
             raise ValueError(f"Eval error for {expr!r}: {msg}")
 
         return bool(result)
+
+import os
+import glob
+import yaml
+from dataclasses import asdict, is_dataclass
+from src.scoring.aggregator import ScoreCard
+
+
+class StrategyRunner:
+    def __init__(self, strategies: List[StrategyConfig]):
+        self.strategies = strategies
+        self.evaluator = RuleEvaluator()
+
+    @classmethod
+    def load_dir(cls, directory: str) -> "StrategyRunner":
+        """Load *.yaml from directory, validate, return runner."""
+        paths = sorted(glob.glob(os.path.join(directory, "*.yaml")))
+        strategies: List[StrategyConfig] = []
+        for p in paths:
+            with open(p, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            strategies.append(StrategyConfig(**data))
+        return cls(strategies)
+
+    def run(self, context) -> List[ScoreCard]:
+        """Evaluate all enabled strategies against the indicator context.
+
+        `context` may be an IndicatorSet dataclass or a plain dict.
+        """
+        ctx = _as_dict(context)
+        cards: List[ScoreCard] = []
+        for cfg in self.strategies:
+            if not cfg.enabled:
+                continue
+            if any(ctx.get(i) is None for i in cfg.indicators_required):
+                continue
+            card = self._evaluate_one(cfg, ctx)
+            if card is not None:
+                cards.append(card)
+        return cards
+
+    def _evaluate_one(self, cfg: StrategyConfig, ctx: dict) -> Optional[ScoreCard]:
+        for idx, rule in enumerate(cfg.rules):
+            if rule.default:
+                matched = True
+            else:
+                matched = self.evaluator.eval(rule.when, ctx)
+            if matched:
+                return ScoreCard(
+                    strategy_name=cfg.name,
+                    score=rule.score,
+                    signal=rule.signal,
+                    reason=rule.reason,
+                    weight=cfg.weight,
+                    rule_matched=idx,
+                )
+        return None  # unreachable if default rule present
+
+
+def _as_dict(obj) -> dict:
+    if isinstance(obj, dict):
+        return obj
+    if is_dataclass(obj):
+        return asdict(obj)
+    raise TypeError(f"Unsupported context type: {type(obj)}")
