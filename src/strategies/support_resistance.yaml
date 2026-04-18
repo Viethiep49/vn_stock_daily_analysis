@@ -1,13 +1,18 @@
-name: "Support Resistance"
-description: "Phân tích vùng Hỗ trợ (Support) và Kháng cự (Resistance)."
-indicators:
-  - name: PriceHistory
-    type: LocalExtremes
-parameters:
-  lookback_period: 60
-  tolerance_percent: 2
-prompt_template: >
-  Xác định các vùng hỗ trợ và kháng cự cứng trong lịch sử {lookback_period} phiên gần nhất.
-  - Nếu giá đang bật lên từ vùng hỗ trợ -> MUA.
-  - Nếu giá bị từ chối tại vùng kháng cự -> BÁN.
-  Giá vượt dứt khoát kháng cự sẽ mở ra xu hướng tăng mới.
+name: "Support & Resistance"
+description: "Proximity to 20-day local Support/Resistance."
+weight: 0.7
+enabled: true
+indicators_required: ["close", "support_20", "resistance_20"]
+rules:
+  - when: "close <= support_20 * 1.01"
+    score: 65
+    signal: BUY
+    reason: "Near Support Level"
+  - when: "close >= resistance_20 * 0.99"
+    score: 35
+    signal: SELL
+    reason: "Near Resistance Level"
+  - default: true
+    score: 50
+    signal: NEUTRAL
+    reason: "Trading between support and resistance"

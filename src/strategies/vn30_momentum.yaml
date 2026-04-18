@@ -1,14 +1,26 @@
-name: "VN30 Momentum"
-description: "Chiến lược động lượng chuyên biệt cho nhóm cổ phiếu Bluechips (VN30)."
-indicators:
-  - name: MACD
-    type: MACD
-  - name: RSI
-    type: RSI
-parameters:
-  min_volume: 1000000
-prompt_template: >
-  Chiến lược áp dụng cho nhóm VN30 (Dòng tiền lớn):
-  - Quan sát MACD histogram, động lượng có đang gia tăng dương không?
-  - RSI duy trì trên mức 50 cho thấy lực mua ổn định.
-  - Hãy kiểm tra xem khối lượng có xác nhận xu hướng không.
+name: "MACD Trend"
+description: "Moving Average Convergence Divergence histogram and crossovers."
+weight: 1.1
+enabled: true
+indicators_required: ["MACD_hist", "prev_MACD_hist"]
+rules:
+  - when: "MACD_hist > 0 and prev_MACD_hist <= 0"
+    score: 75
+    signal: BUY
+    reason: "MACD Histogram bullish crossover (> 0)"
+  - when: "MACD_hist < 0 and prev_MACD_hist >= 0"
+    score: 25
+    signal: SELL
+    reason: "MACD Histogram bearish crossover (< 0)"
+  - when: "MACD_hist > prev_MACD_hist"
+    score: 60
+    signal: BUY_WEAK
+    reason: "MACD Histogram improving (rising)"
+  - when: "MACD_hist < prev_MACD_hist"
+    score: 40
+    signal: SELL_WEAK
+    reason: "MACD Histogram weakening (falling)"
+  - default: true
+    score: 50
+    signal: NEUTRAL
+    reason: "MACD Trend neutral"

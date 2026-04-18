@@ -1,14 +1,26 @@
-name: "RSI Divergence"
-description: "Chiến lược phân kỳ RSI."
-indicators:
-  - name: RSI
-    type: RSI
-    period: 14
-parameters:
-  overbought: 70
-  oversold: 30
-prompt_template: >
-  Hãy tìm kiếm sự phân kỳ giữa giá và chỉ số RSI ({indicators}):
-  - Giá tạo đáy mới thấp hơn nhưng RSI tạo đáy mới cao hơn: Phân kỳ dương -> Tín hiệu MUA.
-  - Giá tạo đỉnh mới cao hơn nhưng RSI tạo đỉnh mới thấp hơn: Phân kỳ âm -> Tín hiệu BÁN.
-  Tình trạng quá bán < {oversold} hoặc quá mua > {overbought} cũng cần lưu ý.
+name: "RSI Momentum"
+description: "RSI-based overbought/oversold and trend strength."
+weight: 1.0
+enabled: true
+indicators_required: ["RSI14"]
+rules:
+  - when: "RSI14 > 70"
+    score: 30
+    signal: SELL
+    reason: "RSI Overbought (>70)"
+  - when: "RSI14 < 30"
+    score: 75
+    signal: BUY
+    reason: "RSI Oversold (<30)"
+  - when: "RSI14 > 50"
+    score: 60
+    signal: BUY_WEAK
+    reason: "RSI Positive Momentum (>50)"
+  - when: "RSI14 < 50"
+    score: 40
+    signal: SELL_WEAK
+    reason: "RSI Negative Momentum (<50)"
+  - default: true
+    score: 50
+    signal: NEUTRAL
+    reason: "RSI at neutral levels (~50)"

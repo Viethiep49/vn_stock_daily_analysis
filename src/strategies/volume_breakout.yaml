@@ -1,13 +1,22 @@
 name: "Volume Breakout"
-description: "Chiến lược đột phá khối lượng giao dịch."
-indicators:
-  - name: VolMA
-    type: SMA
-    source: volume
-    period: 20
-parameters:
-  volume_multiplier: 1.5
-prompt_template: >
-  Nếu khối lượng giao dịch hiện tại vượt gấp {volume_multiplier} lần trung bình khối lượng 20 phiên:
-  - Đi kèm với giá tăng mạnh -> Breakout MUA.
-  - Đi kèm với giá giảm mạnh -> Breakout BÁN (tháo cống).
+description: "Detect abnormal volume movements relative to MA20."
+weight: 0.8
+enabled: true
+indicators_required: ["volume_ratio", "close", "prev_close"]
+rules:
+  - when: "volume_ratio > 2.0 and close > prev_close"
+    score: 80
+    signal: STRONG_BUY
+    reason: "High Volume Breakout (Vol > 2x Avg & Price Up)"
+  - when: "volume_ratio > 2.0 and close < prev_close"
+    score: 20
+    signal: STRONG_SELL
+    reason: "High Volume Breakdown (Vol > 2x Avg & Price Down)"
+  - when: "volume_ratio > 1.2"
+    score: 60
+    signal: BUY_WEAK
+    reason: "Increasing Volume (>1.2x Avg)"
+  - default: true
+    score: 50
+    signal: NEUTRAL
+    reason: "Normal volume levels"

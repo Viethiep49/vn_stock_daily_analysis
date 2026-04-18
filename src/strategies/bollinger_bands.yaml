@@ -1,15 +1,22 @@
 name: "Bollinger Bands"
-description: "Giao dịch dựa trên dải Bollinger Bands."
-indicators:
-  - name: BBands
-    type: BollingerBands
-    period: 20
-    std_dev: 2
-parameters:
-  bb_period: 20
-  std_dev: 2
-prompt_template: >
-  Xem xét vị trí giá so với dải Bollinger ({indicators}):
-  - Giá chạm dải dưới (Lower Band) và bật lên -> MUA.
-  - Giá chạm dải trên (Upper Band) và bị dội xuống -> BÁN.
-  Lưu ý sự co thắt (Squeeze) cho thấy sắp có biến động mạnh.
+description: "Volatility bands and mean reversion."
+weight: 1.0
+enabled: true
+indicators_required: ["close", "BB_upper", "BB_lower", "BB_mid"]
+rules:
+  - when: "close < BB_lower"
+    score: 70
+    signal: BUY
+    reason: "Price below Lower Band (Oversold/Mean Reversion)"
+  - when: "close > BB_upper"
+    score: 30
+    signal: SELL
+    reason: "Price above Upper Band (Overbought)"
+  - when: "close > BB_mid"
+    score: 55
+    signal: NEUTRAL
+    reason: "Price in Upper Half of Channel"
+  - default: true
+    score: 45
+    signal: NEUTRAL
+    reason: "Price in Lower Half of Channel"

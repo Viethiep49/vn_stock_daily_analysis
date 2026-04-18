@@ -1,16 +1,26 @@
 name: "MA Crossover"
-description: "Chiến lược dựa trên sự giao cắt của hai đường trung bình động (Moving Average)."
-indicators:
-  - name: MA20
-    type: SMA
-    period: 20
-  - name: MA50
-    type: SMA
-    period: 50
-parameters:
-  fast_ma: 20
-  slow_ma: 50
-prompt_template: >
-  Xem xét dữ liệu giá và các đường MA: {indicators}.
-  Nếu đường MA ngắn hạn cắt lên đường MA dài hạn -> Tín hiệu MUA.
-  Nếu đường MA ngắn hạn cắt xuống đường MA dài hạn -> Tín hiệu BÁN.
+description: "Cross of 20-day and 50-day Simple Moving Averages."
+weight: 1.2
+enabled: true
+indicators_required: ["MA20", "MA50", "prev_MA20", "prev_MA50"]
+rules:
+  - when: "MA20 > MA50 and prev_MA20 <= prev_MA50"
+    score: 85
+    signal: STRONG_BUY
+    reason: "Golden Cross (MA20 crossed above MA50)"
+  - when: "MA20 < MA50 and prev_MA20 >= prev_MA50"
+    score: 15
+    signal: STRONG_SELL
+    reason: "Death Cross (MA20 crossed below MA50)"
+  - when: "MA20 > MA50"
+    score: 65
+    signal: BUY
+    reason: "Bullish Alignment (MA20 > MA50)"
+  - when: "MA20 < MA50"
+    score: 35
+    signal: SELL
+    reason: "Bearish Alignment (MA20 < MA50)"
+  - default: true
+    score: 50
+    signal: NEUTRAL
+    reason: "MAs are flat or overlapping"
