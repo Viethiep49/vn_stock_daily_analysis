@@ -74,3 +74,37 @@ class TestStrategyConfigSchema:
         ]}
         with pytest.raises(ValidationError):
             StrategyConfig(**bad)
+
+
+from src.scoring.strategy_runner import RuleEvaluator
+
+
+class TestRuleEvaluator:
+    def setup_method(self):
+        self.ev = RuleEvaluator()
+
+    def test_simple_expression_true(self):
+        assert self.ev.eval("a > b", {"a": 2, "b": 1}) is True
+
+    def test_simple_expression_false(self):
+        assert self.ev.eval("a > b", {"a": 1, "b": 2}) is False
+
+    def test_compound_and(self):
+        ctx = {"MA20": 10, "MA50": 8, "prev_MA20": 7, "prev_MA50": 8}
+        assert self.ev.eval("MA20 > MA50 and prev_MA20 <= prev_MA50", ctx) is True
+
+    def test_missing_variable_returns_false(self):
+        # Rule referring to missing indicator -> skip (False)
+        assert self.ev.eval("missing > 0", {"a": 1}) is False
+
+    def test_none_value_returns_false(self):
+        # If an indicator is None (NaN), comparisons skip
+        assert self.ev.eval("x > 0", {"x": None}) is False
+
+    def test_injection_import_blocked(self):
+        with pytest.raises(ValueError):
+            self.ev.eval("__import__('os').system('echo hi')", {})
+
+    def test_injection_builtin_blocked(self):
+        with pytest.raises(ValueError):
+            self.ev.eval("open('/etc/passwd').read()", {})

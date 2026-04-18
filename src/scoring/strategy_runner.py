@@ -39,3 +39,46 @@ class StrategyConfig(BaseModel):
         if defaults[0] != len(rules) - 1:
             raise ValueError("Default rule must be the LAST rule")
         return rules
+
+
+from asteval import Interpreter
+
+
+class RuleEvaluator:
+    """Evaluate a boolean rule expression against a variable context.
+
+    - Uses asteval (restricted AST). No imports, no builtins like open().
+    - Missing or None variables cause the expression to return False (skip rule).
+    - Any syntax error or attempt to access a dangerous name raises ValueError.
+    """
+
+    # asteval's default interpreter already strips __import__, exec, eval,
+    # open, and similar. We still guard by checking the source text.
+    _BLOCKED_TOKENS = ("__", "import", "open(", "exec(", "eval(", "compile(")
+
+    def eval(self, expr: str, context: dict) -> bool:
+        for tok in self._BLOCKED_TOKENS:
+            if tok in expr:
+                raise ValueError(f"Expression contains blocked token: {tok!r}")
+
+        interp = Interpreter(no_print=True, minimal=True)
+        # Reject None-valued or missing variables by short-circuiting to False
+        safe_ctx = {k: v for k, v in context.items() if v is not None}
+        for k, v in safe_ctx.items():
+            interp.symtable[k] = v
+
+        try:
+            result = interp(expr)
+        except Exception as e:
+            raise ValueError(f"Invalid expression: {expr!r}: {e}")
+
+        if interp.error:
+            # asteval accumulates errors in .error; a NameError for missing
+            # variables should yield False (skip), not raise.
+            first = interp.error[0]
+            msg = str(first.get_error())
+            if "not defined" in msg or "NameError" in msg:
+                return False
+            raise ValueError(f"Eval error for {expr!r}: {msg}")
+
+        return bool(result)
