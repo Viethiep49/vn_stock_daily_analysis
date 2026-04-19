@@ -3,12 +3,20 @@ from typing import List, Dict, Any, Optional
 import json
 import logging
 import re
+from datetime import date, datetime
 
 from src.core.llm_client import LiteLLMClient
 from src.agents.protocols import AgentContext, AgentOpinion, Signal
 from src.agents.tools.registry import default_registry
 
 logger = logging.getLogger(__name__)
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle date/datetime objects."""
+    def default(self, obj):
+        if isinstance(obj, (date, datetime)):
+            return obj.isoformat()
+        return super().default(obj)
 
 class BaseAgent(ABC):
     """
@@ -70,7 +78,7 @@ class BaseAgent(ABC):
                                 "role": "tool",
                                 "tool_call_id": tool_call.id,
                                 "name": tool_name,
-                                "content": json.dumps(result)
+                                "content": json.dumps(result, cls=DateTimeEncoder)
                             })
                         except Exception as e:
                             logger.error(f"Error executing tool {tool_name}: {e}")

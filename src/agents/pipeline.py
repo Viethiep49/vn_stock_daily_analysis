@@ -1,3 +1,4 @@
+from typing import Tuple
 from src.agents.protocols import AgentContext, AgentOpinion
 from src.agents.technical_agent import TechnicalAgent
 from src.agents.risk_agent import RiskAgent
@@ -21,9 +22,10 @@ class AgentPipeline:
         self.risk_agent = RiskAgent(llm_client=self.llm_client)
         self.decision_agent = DecisionAgent(llm_client=self.llm_client)
 
-    def run(self, symbol: str) -> AgentOpinion:
+    def run(self, symbol: str) -> Tuple[AgentOpinion, AgentContext]:
         """
         Run the full analysis pipeline for a given symbol.
+        Returns a tuple of (final_opinion, context).
         """
         logger.info(f"Starting analysis pipeline for symbol: {symbol}")
         
@@ -52,4 +54,4 @@ class AgentPipeline:
         final_decision = self.decision_agent.run(context)
         
         logger.info(f"Pipeline completed for {symbol}. Final signal: {final_decision.signal}")
-        return final_decision
+        return final_decision, context

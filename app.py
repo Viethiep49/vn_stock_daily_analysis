@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from src.core.analyzer import Analyzer
+from src.agents.pipeline import AgentPipeline
 from dotenv import load_dotenv
 import os
 
@@ -45,6 +46,7 @@ st.markdown("Hệ thống AI phân tích chứng khoán Việt Nam hàng ngày (
 with st.sidebar:
     st.header("Cài đặt")
     symbol_input = st.text_input("Mã cổ phiếu", value="VNM.HO", help="Ví dụ: VNM.HO, FPT.HO, ACB.HN").upper()
+    use_agents = st.toggle("Sử dụng Multi-Agent Analysis", value=False, help="Kích hoạt hệ thống nhiều Agent chuyên biệt")
     analyze_button = st.button("🚀 Bắt đầu phân tích")
     
     st.divider()
@@ -59,9 +61,29 @@ with st.sidebar:
 if analyze_button:
     with st.spinner(f"Đang phân tích mã {symbol_input}..."):
         try:
-            # Initialize Analyzer
-            analyzer = Analyzer()
-            result = analyzer.analyze(symbol_input)
+            if use_agents:
+                # Use Multi-Agent Pipeline
+                pipeline = AgentPipeline()
+                opinion, context = pipeline.run(symbol_input)
+                
+                result = {
+                    "status": "success",
+                    "symbol": symbol_input,
+                    "info": context.data.get("stock_info", {}),
+                    "quote": context.data.get("realtime_quote", {}),
+                    "tech_summary": "Phân tích bởi Multi-Agent System (Technical + Risk + Decision Agents)",
+                    "llm_analysis": f"### Final Signal: {opinion.signal}\n**Confidence: {opinion.confidence:.2f}**\n\n{opinion.reasoning}"
+                }
+                
+                # Add detailed agent opinions to llm_analysis
+                if context.opinions:
+                    result["llm_analysis"] += "\n\n---\n### Detailed Agent Opinions"
+                    for agent_name, agent_opinion in context.opinions.items():
+                        result["llm_analysis"] += f"\n\n**{agent_name.capitalize()} Agent:**\n- Signal: {agent_opinion.signal}\n- Reasoning: {agent_opinion.reasoning}"
+            else:
+                # Initialize Analyzer (Legacy/Simple)
+                analyzer = Analyzer()
+                result = analyzer.analyze(symbol_input)
             
             if result.get("status") == "failed":
                 st.error(f"❌ Lỗi: {result.get('error')}")
@@ -81,9 +103,9 @@ if analyze_button:
                     
                     st.metric("Giá hiện tại", f"{price:,.0f} đ", f"{change:+,.0f} đ ({change_pct:+.2f}%)")
                     
-                    st.write(f"**🏢 Công ty:** {info.get('company_name')}")
-                    st.write(f"**🏗️ Ngành:** {info.get('industry')}")
-                    st.write(f"**🏛️ Sàn:** {info.get('exchange')}")
+                    st.write(f"**🏢 Công ty:** {info.get('company_name', symbol_input)}")
+                    st.write(f"**🏗️ Ngành:** {info.get('industry', 'N/A')}")
+                    st.write(f"**🏛️ Sàn:** {info.get('exchange', 'N/A')}")
                     st.write(f"**📦 Khối lượng:** {quote.get('volume', 0):,.0f} cp")
                     
                     # Circuit Breaker
@@ -107,6 +129,8 @@ if analyze_button:
                 
         except Exception as e:
             st.error(f"Đã xảy ra lỗi hệ thống: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
 else:
     # Placeholder state
     st.info("Vui lòng nhập mã cổ phiếu ở thanh bên trái và nhấn nút 'Bắt đầu phân tích'.")
