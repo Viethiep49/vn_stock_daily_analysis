@@ -16,7 +16,7 @@ class DecisionAgent(BaseAgent):
     def system_prompt(self, context: AgentContext) -> str:
         return (
             "You are the Lead Investment Decision Agent. "
-            "Synthesize opinions from Technical and Risk agents into a final recommendation. "
+            "Synthesize opinions from Technical, Risk, and Market Intelligence (Intel) agents into a final recommendation. "
             "Your output must be a JSON block containing 'signal', 'confidence', 'reasoning', and 'key_levels'."
         )
 

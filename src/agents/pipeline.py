@@ -112,7 +112,15 @@ class AgentPipeline:
         except Exception as e:
             logger.error(f"RiskAgent failed for {symbol}: {e}")
 
-        # 4. Run Decision Making Agent (Final Synthesis)
+        # 4. Run Market Intelligence Agent
+        logger.info(f"Running IntelAgent for {symbol}...")
+        try:
+            intel_opinion = self.intel_agent.run(context)
+            context.opinions["intel"] = intel_opinion
+        except Exception as e:
+            logger.error(f"IntelAgent failed for {symbol}: {e}")
+
+        # 5. Run Decision Making Agent (Final Synthesis)
         logger.info(f"Running DecisionAgent for {symbol}...")
         final_decision = None
         try:
