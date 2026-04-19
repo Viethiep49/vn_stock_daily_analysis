@@ -1,180 +1,209 @@
 # 🇻🇳 VN Stock Daily Analysis Agent
 
-Hệ thống AI Agent tự động phân tích cổ phiếu thị trường chứng khoán Việt Nam hàng ngày, gửi báo cáo qua Telegram / Discord.
+Daily automated AI analysis for the Vietnamese stock market with notifications via Telegram / Discord.
 
 > **Stack:** Python 3.11+ · vnstock v3.5+ · LiteLLM · FastAPI · GitHub Actions
 
 ---
 
-## ✨ Tính năng
+## ✨ Features
 
-| Tính năng | Trạng thái |
+| Feature | Status |
 |-----------|-----------|
-| Lấy dữ liệu giá thực từ HOSE/HNX | ✅ Phase 1 |
-| Validate & chuẩn hóa mã CK | ✅ Phase 1 |
-| Cảnh báo trần/sàn tự động | ✅ Phase 1 |
-| Cache SQLite tránh rate-limit | ✅ Phase 1 |
-| Phân tích AI (LiteLLM → Gemini/OpenAI/Ollama) | ✅ Phase 1 |
-| Push báo cáo Telegram | ✅ Phase 2 |
-| Push báo cáo Discord (Rich Embeds) | ✅ Phase 2 |
-| Chiến lược YAML (MA, RSI, Volume...) | ✅ Phase 2 |
-| Lập lịch tự động GitHub Actions | ✅ Phase 2 |
+| Real-time data fetching from HOSE/HNX | ✅ Phase 1 |
+| Symbol validation & normalization | ✅ Phase 1 |
+| Automated ceiling/floor alerts | ✅ Phase 1 |
+| SQLite caching to avoid rate-limits | ✅ Phase 1 |
+| AI Analysis (LiteLLM → Gemini/OpenAI/Ollama) | ✅ Phase 1 |
+| Telegram notification push | ✅ Phase 2 |
+| Discord notification push (Rich Embeds) | ✅ Phase 2 |
+| YAML Strategies (MA, RSI, Volume...) | ✅ Phase 2 |
+| GitHub Actions scheduling | ✅ Phase 2 |
 | Web Dashboard (FastAPI + React) | 🔜 Phase 3 |
-| Multi-Agent analysis | 🔜 Phase 4 |
+| Multi-Agent analysis | ✅ Done |
+| Agent Skills (Markdown) | ✅ Done |
 
 ---
 
-## 🚀 Cài đặt nhanh
+## 📚 Documentation
 
-### Yêu cầu
-- Python **3.11+** (vnstock yêu cầu ≥3.10)
-- pip hoặc uv
+Detailed documentation is available in the `docs/` directory:
 
-### Bước 1 — Clone & tạo môi trường ảo
+### User Guides
+- [Getting Started](docs/user/getting-started.md)
+- [Configuration Guide](docs/user/configuration.md)
+- [Usage Guide](docs/user/usage-guide.md)
+
+### Developer Guides
+- [Architecture Overview](docs/dev/architecture.md)
+- [API Reference](docs/dev/api-reference.md)
+- [Testing Guide](docs/dev/testing.md)
+- [Strategy Customization](docs/dev/strategy-customization.md)
+
+---
+
+## 🚀 Quick Start
+
+### Requirements
+- Python **3.11+** (vnstock requires ≥3.10)
+- pip or uv
+
+### Step 1 — Clone & Create Virtual Environment
 ```bash
 git clone <repo-url>
 cd vn_stock_daily_analysis
 
 python3.11 -m venv venv
 source venv/bin/activate       # macOS/Linux
-# hoặc: venv\Scripts\activate  # Windows
+# or: venv\Scripts\activate  # Windows
 ```
 
-### Bước 2 — Cài dependencies
+### Step 2 — Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Bước 3 — Cấu hình môi trường
+### Step 3 — Environment Configuration
 ```bash
 cp .env.example .env
-# Mở file .env và điền API keys (xem hướng dẫn bên dưới)
+# Open .env and fill in your API keys (see instructions below)
 ```
 
 ---
 
-## 🔑 Cấu hình API Keys
+## 🔑 API Keys Configuration
 
-### `.env` — Tất cả biến môi trường
+### `.env` — All Environment Variables
 
 ```env
-# ========= LLM (bắt buộc ít nhất 1) =========
-GEMINI_API_KEY=AIza...          # Google AI Studio → aistudio.google.com (miễn phí)
-OPENAI_API_KEY=sk-...           # OpenAI Platform (trả phí)
-ANTHROPIC_API_KEY=sk-ant-...    # Anthropic Console (trả phí)
+# ========= LLM (at least 1 required) =========
+GEMINI_API_KEY=AIza...          # Google AI Studio → aistudio.google.com (free)
+OPENAI_API_KEY=sk-...           # OpenAI Platform (paid)
+ANTHROPIC_API_KEY=sk-ant-...    # Anthropic Console (paid)
 
-# ========= Notification (tuỳ chọn) ===========
-TELEGRAM_BOT_TOKEN=123456:ABC...  # Tạo bot tại @BotFather trên Telegram
-TELEGRAM_CHAT_ID=-100...          # ID của chat/group muốn gửi tin
+# ========= Notification (optional) ===========
+TELEGRAM_BOT_TOKEN=123456:ABC...  # Create bot via @BotFather on Telegram
+TELEGRAM_CHAT_ID=-100...          # Chat/Group ID to send messages
 
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 
-# ========= Cấu hình LLM =====================
-LLM_PRIMARY_MODEL=gemini/gemini-2.0-flash    # Model ưu tiên
-LLM_BACKUP_MODEL=gemini/gemini-1.5-flash     # Model dự phòng khi lỗi
+# ========= LLM Configuration =====================
+LLM_PRIMARY_MODEL=gemini/gemini-2.0-flash    # Primary model
+LLM_BACKUP_MODEL=gemini/gemini-1.5-flash     # Backup model on error
 ```
 
-### Lấy API Key miễn phí
+### Getting Free API Keys
 
-| Dịch vụ | Link | Ghi chú |
+| Service | Link | Notes |
 |---------|------|---------|
-| **Gemini** (khuyên dùng) | [aistudio.google.com](https://aistudio.google.com/app/apikey) | Miễn phí, mạnh |
-| **vnstock** | [vnstocks.com](https://vnstocks.com) | Dữ liệu chứng khoán VN, nguồn KBS miễn phí |
-| **Telegram Bot** | Nhắn `/newbot` tới @BotFather | Miễn phí |
-| **Discord Webhook** | Server Settings → Integrations → Webhooks | Miễn phí |
+| **Gemini** (Recommended) | [aistudio.google.com](https://aistudio.google.com/app/apikey) | Free, powerful |
+| **vnstock** | [vnstocks.com](https://vnstocks.com) | VN stock data, KBS source is free |
+| **Telegram Bot** | Message `/newbot` to @BotFather | Free |
+| **Discord Webhook** | Server Settings → Integrations → Webhooks | Free |
 
 ---
 
-## 💻 Cách sử dụng
+## 💻 Usage
 
-### Chạy phân tích một mã
+### Analyze a Single Symbol
 
 ```bash
-# Phân tích VNM, in ra Terminal (không gửi notification)
+# Analyze VNM, print to Terminal (no notifications)
 python main.py --symbol VNM.HO --dry-run
 
-# Phân tích FPT và gửi lên Telegram/Discord
+# Analyze FPT and send to Telegram/Discord
 python main.py --symbol FPT.HO
 
-# Phân tích HPG, buộc chạy dù hôm nay không phải ngày giao dịch
+# Analyze HPG, force run even if today is not a trading day
 python main.py --symbol HPG --force-run --dry-run
 ```
 
-### Định dạng mã chứng khoán được chấp nhận
+### Run with Multi-Agent Structure (Deep Dive)
+```bash
+# Analyze FPT with 3 Agents (Technical, Risk, Decision)
+python main.py --symbol FPT --agents
+
+# Analyze with specialized skills/strategies
+python main.py --symbol HPG --agents --skill CANSLIM
 ```
-VNM          → Vinamilk (HOSE), tự động thêm .HO
-VNM.HO       → Vinamilk (HOSE) - format chuẩn
+
+See details in [docs/AGENTS.md](./docs/AGENTS.md).
+
+### Accepted Symbol Formats
+```
+VNM          → Vinamilk (HOSE), automatically adds .HO
+VNM.HO       → Vinamilk (HOSE) - standard format
 ACB.HN       → ACB (HNX)
 SHB.HN       → SHB (HNX)
 FPT          → FPT (HOSE)
 ```
 
-### Output mẫu
+### Example Output
 ```
 ==================================================
-BÁO CÁO PHÂN TÍCH: VNM.HO
+ANALYSIS REPORT: VNM.HO
 ==================================================
-🏢 Công ty: CTCP Sữa Việt Nam | Ngành:  | Sàn: HOSE
-💰 Giá:    61,300đ  (+200đ / +0.33%)
-📦 KL giao dịch: 3,115,500 cổ phiếu
-📈 Kỹ thuật: MA5=62,420đ | MA20=61,850đ | KL hôm nay/TB20: 0.8x
+🏢 Company: CTCP Sữa Việt Nam | Industry:  | Exchange: HOSE
+💰 Price:    61,300 VND (+200 VND / +0.33%)
+📦 Volume: 3,115,500 shares
+📈 Technical: MA5=62,420 VND | MA20=61,850 VND | Volume today/Avg20: 0.8x
 --------------------------------------------------
 🤖 LLM Analysis:
-1. Xu hướng: VNM đang hồi phục nhẹ sau vùng hỗ trợ 60,000đ...
-2. Rủi ro: Áp lực bán tại vùng 63,000đ, khối lượng thấp hơn TB...
-3. Khuyến nghị: GIỮ — chờ xác nhận vượt kháng cự.
+1. Trend: VNM is recovering slightly after finding support at 60,000 VND...
+2. Risks: Selling pressure near 63,000 VND, volume lower than average...
+3. Recommendation: HOLD — wait for confirmation above resistance.
 --------------------------------------------------
-✅ Trạng thái: Hoàn thành
+✅ Status: Completed
 ```
 
 ---
 
-## 🏗️ Cấu trúc dự án
+## 🏗️ Project Structure
 
 ```
 vn_stock_daily_analysis/
-├── main.py                          # Entry point CLI
+├── main.py                          # CLI Entry point
 ├── requirements.txt
-├── .env.example                     # Mẫu cấu hình
-├── implementation_plan.md           # Kế hoạch triển khai đầy đủ
+├── .env.example                     # Configuration template
+├── implementation_plan.md           # Full implementation plan
 │
 ├── src/
 │   ├── core/
-│   │   ├── analyzer.py              # Orchestrator chính
+│   │   ├── analyzer.py              # Main Orchestrator
 │   │   └── llm_client.py            # LiteLLM wrapper (Gemini/OpenAI/Ollama)
 │   │
 │   ├── data_provider/
 │   │   ├── base.py                  # Abstract interface
-│   │   ├── vnstock_provider.py      # 🔥 Data thực từ vnstock v3.5 (KBS)
+│   │   ├── vnstock_provider.py      # 🔥 Real data from vnstock v3.5 (KBS)
 │   │   └── fallback_router.py       # Retry + fallback logic
 │   │
 │   ├── market/
-│   │   ├── circuit_breaker.py       # Cảnh báo giá trần/sàn HOSE/HNX/UPCOM
-│   │   └── sector_mapping.py        # Mapping ngành ICB Việt Nam
+│   │   ├── circuit_breaker.py       # Price limit alerts (HOSE/HNX/UPCOM)
+│   │   └── sector_mapping.py        # Vietnam ICB sector mapping
 │   │
 │   ├── notifier/
 │   │   ├── base.py                  # Abstract notifier
-│   │   ├── telegram_bot.py          # Push Telegram (Markdown)
-│   │   └── discord_bot.py           # Push Discord (Rich Embeds)
+│   │   ├── telegram_bot.py          # Telegram push (Markdown)
+│   │   └── discord_bot.py           # Discord push (Rich Embeds)
 │   │
-│   ├── strategies/                  # Chiến lược trading dạng YAML
-│   │   ├── ma_crossover.yaml        # MA20 cắt MA50
-│   │   ├── rsi_divergence.yaml      # RSI phân kỳ
-│   │   ├── volume_breakout.yaml     # Đột phá khối lượng
-│   │   ├── support_resistance.yaml  # Hỗ trợ / Kháng cự
+│   ├── strategies/                  # YAML-based trading strategies
+│   │   ├── ma_crossover.yaml        # MA20 crosses MA50
+│   │   ├── rsi_divergence.yaml      # RSI divergence
+│   │   ├── volume_breakout.yaml     # Volume breakout
+│   │   ├── support_resistance.yaml  # Support / Resistance
 │   │   ├── bollinger_bands.yaml     # Bollinger Bands
-│   │   └── vn30_momentum.yaml       # Momentum VN30
+│   │   └── vn30_momentum.yaml       # VN30 Momentum
 │   │
 │   └── utils/
-│       ├── validator.py             # Validate mã CK
+│       ├── validator.py             # Symbol validator
 │       └── cache.py                 # SQLite local cache
 │
 ├── tests/
-│   ├── test_data_provider.py        # Unit tests data provider
-│   ├── test_validator.py            # Unit tests validator
-│   ├── test_circuit_breaker.py      # Unit tests circuit breaker
-│   ├── test_analyzer.py             # Integration tests analyzer
-│   └── test_notifier.py             # Unit tests notifiers
+│   ├── test_data_provider.py        # Data provider unit tests
+│   ├── test_validator.py            # Validator unit tests
+│   ├── test_circuit_breaker.py      # Circuit breaker unit tests
+│   ├── test_analyzer.py             # Analyzer integration tests
+│   └── test_notifier.py             # Notifier unit tests
 │
 └── .github/
     └── workflows/
@@ -183,50 +212,50 @@ vn_stock_daily_analysis/
 
 ---
 
-## ⚙️ GitHub Actions — Tự động hóa hàng ngày
+## ⚙️ GitHub Actions — Daily Automation
 
-Workflow tại `.github/workflows/daily_analysis.yml` sẽ tự chạy vào **15:00 ICT** (08:00 UTC) các ngày trong tuần.
+The workflow at `.github/workflows/daily_analysis.yml` runs at **15:00 ICT** (08:00 UTC) on weekdays.
 
-### Thiết lập GitHub Secrets
-Vào **Settings → Secrets and variables → Actions → New repository secret**:
+### Set up GitHub Secrets
+Go to **Settings → Secrets and variables → Actions → New repository secret**:
 
-| Secret | Giá trị |
+| Secret | Value |
 |--------|---------|
-| `GEMINI_API_KEY` | API key từ Google AI Studio |
-| `TELEGRAM_BOT_TOKEN` | Token bot Telegram |
-| `TELEGRAM_CHAT_ID` | Chat ID nhận báo cáo |
-| `DISCORD_WEBHOOK_URL` | Webhook Discord (tuỳ chọn) |
+| `GEMINI_API_KEY` | API key from Google AI Studio |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token |
+| `TELEGRAM_CHAT_ID` | Chat ID for reports |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL (optional) |
 
-### Chạy thủ công trên GitHub
-1. Vào tab **Actions** trên repository
-2. Chọn workflow **VN Stock Daily Analysis**
-3. Click **Run workflow** → nhập mã CK → Run
+### Manual Run on GitHub
+1. Go to the **Actions** tab on the repository
+2. Select the **VN Stock Daily Analysis** workflow
+3. Click **Run workflow** → enter symbol → Run
 
 ---
 
-## 🧪 Chạy Unit Tests
+## 🧪 Running Unit Tests
 
 ```bash
 source venv/bin/activate
 
-# Chạy toàn bộ test suite
+# Run full test suite
 PYTHONPATH=. pytest tests/ -v
 
-# Chạy từng nhóm test
+# Run specific test groups
 PYTHONPATH=. pytest tests/test_validator.py -v
 PYTHONPATH=. pytest tests/test_circuit_breaker.py -v
 PYTHONPATH=. pytest tests/test_data_provider.py -v --timeout=15
 PYTHONPATH=. pytest tests/test_notifier.py -v
 
-# Kiểm tra code quality
+# Check code quality
 flake8 src/ main.py --max-line-length=120
 ```
 
 ---
 
-## 📈 Chiến lược Trading (YAML)
+## 📈 Trading Strategies (YAML)
 
-Các chiến lược được định nghĩa trong `src/strategies/*.yaml`. Mỗi file có:
+Strategies are defined in `src/strategies/*.yaml`. Each file contains:
 
 ```yaml
 name: "MA Crossover"
@@ -239,27 +268,29 @@ parameters:
   fast_ma: 20
   slow_ma: 50
 prompt_template: >
-  Xem xét dữ liệu ... → Tín hiệu MUA/BÁN
+  Analyze data ... → BUY/SELL Signal
 ```
 
-Trong Phase 4, các chiến lược sẽ được inject vào LLM context để phân tích chuyên sâu hơn.
+In Phase 4, strategies are injected into the LLM context for deeper analysis.
 
 ---
 
-## 🗺️ Lộ trình phát triển
+## 🗺️ Roadmap
 
-| Phase | Nội dung | Trạng thái |
+| Phase | Content | Status |
 |-------|----------|-----------|
-| **Phase 1** | MVP: Data Provider + AI Analyzer + CLI | ✅ Hoàn thành |
-| **Phase 2** | Notification + Strategies YAML + GitHub Actions | ✅ Hoàn thành |
-| **Phase 3** | Web Dashboard (FastAPI + React) | 🔜 Kế hoạch |
-| **Phase 4** | Multi-Agent + Chat Interface + Advanced | 🔜 Kế hoạch |
+| **Phase 1** | MVP: Data Provider + AI Analyzer + CLI | ✅ Completed |
+| **Phase 2** | Notification + Strategies YAML + GitHub Actions | ✅ Completed |
+| **Phase 3** | Web Dashboard (FastAPI + React) | 🔜 Planned |
+| **Phase 4** | Multi-Agent + Skills + Advanced Analysis | ✅ Completed |
 
-Chi tiết: xem [implementation_plan.md](./implementation_plan.md)
+Details: see [implementation_plan.md](./implementation_plan.md)
 
 ---
 
-## 🤝 Đóng góp & Phát triển
+## 🤝 Contributing & Development
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
 
 ```bash
 # Setup dev environment
@@ -267,7 +298,7 @@ python3.11 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 pip install autopep8  # code formatter
 
-# Sau khi chỉnh sửa code
+# After editing code
 autopep8 -i -a -a -r src/ main.py   # Auto-format
 flake8 src/ main.py --max-line-length=120  # Lint check
 PYTHONPATH=. pytest tests/ -v               # Run tests
@@ -275,6 +306,6 @@ PYTHONPATH=. pytest tests/ -v               # Run tests
 
 ---
 
-## 📝 Giấy phép
+## 📝 License
 
-MIT License — xem [LICENSE](./LICENSE) để biết thêm.
+MIT License — see [LICENSE](./LICENSE) for more details.
