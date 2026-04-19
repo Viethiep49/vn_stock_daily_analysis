@@ -3,6 +3,7 @@ from .base_agent import BaseAgent
 from .technical_agent import TechnicalAgent
 from .risk_agent import RiskAgent
 from .decision_agent import DecisionAgent
+from .pipeline import AgentPipeline
 
 __all__ = [
     "Signal", 
@@ -11,5 +12,6 @@ __all__ = [
     "BaseAgent",
     "TechnicalAgent",
     "RiskAgent",
-    "DecisionAgent"
+    "DecisionAgent",
+    "AgentPipeline"
 ]
