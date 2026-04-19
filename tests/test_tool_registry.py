@@ -25,3 +25,11 @@ def test_get_schemas():
     assert len(schemas) == 1
     assert schemas[0]["function"]["name"] == "get_weather"
     assert "location" in schemas[0]["function"]["parameters"]["properties"]
+
+def test_initial_tools_registration():
+    from src.agents.tools.registry import default_registry
+    schemas = default_registry.get_schemas()
+    names = [s["function"]["name"] for s in schemas]
+    assert "get_quote" in names
+    assert "get_history" in names
+    assert "check_circuit_breaker" in names

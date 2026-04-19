@@ -1,5 +1,7 @@
 import inspect
 from typing import Dict, Any, Callable, List
+from src.data_provider.vnstock_provider import VNStockProvider
+from src.market.circuit_breaker import CircuitBreakerHandler
 
 class ToolRegistry:
     def __init__(self):
@@ -52,3 +54,23 @@ class ToolRegistry:
                 "parameters": parameters
             }
         }
+
+def get_quote(symbol: str):
+    """Lấy giá realtime của một mã cổ phiếu."""
+    return VNStockProvider().get_realtime_quote(symbol)
+
+def get_history(symbol: str, start_date: str, end_date: str):
+    """Lấy dữ liệu lịch sử giá của một mã cổ phiếu."""
+    df = VNStockProvider().get_historical_data(symbol, start_date, end_date)
+    return df.to_dict('records')
+
+def check_circuit_breaker(symbol: str, current_price: float, reference_price: float):
+    """Kiểm tra xem giá hiện tại có chạm trần/sàn không."""
+    handler = CircuitBreakerHandler()
+    handler.set_reference_price(symbol, reference_price)
+    return handler.check_limit_status(symbol, current_price)
+
+default_registry = ToolRegistry()
+default_registry.register("get_quote", get_quote)
+default_registry.register("get_history", get_history)
+default_registry.register("check_circuit_breaker", check_circuit_breaker)
