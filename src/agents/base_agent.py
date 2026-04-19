@@ -43,9 +43,24 @@ class BaseAgent(ABC):
         ]
 
         runner = AgentRunner(llm_client=self.llm_client)
-        final_text = runner.run(system_prompt, messages, self.registry)
+        final_text, stats = runner.run(system_prompt, messages, self.registry)
         
-        return self._parse_opinion(final_text)
+        opinion = self._parse_opinion(final_text)
+
+        # Log telemetry
+        try:
+            from src.utils.telemetry import log_stage_result
+            from src.agents.protocols import StageResult
+            stage_result = StageResult(
+                agent_name=self.__class__.__name__,
+                stats=stats,
+                opinion=opinion
+            )
+            log_stage_result(stage_result)
+        except Exception as e:
+            logger.error(f"Failed to log telemetry for {self.__class__.__name__}: {e}")
+            
+        return opinion
 
     def _parse_opinion(self, content: str) -> AgentOpinion:
         """

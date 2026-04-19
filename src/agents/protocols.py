@@ -21,6 +21,21 @@ class AgentOpinion(BaseModel):
     raw_data: Optional[Dict[str, Any]] = Field(default=None, description="Optional raw data used for analysis")
 
 
+class AgentRunStats(BaseModel):
+    """Stats for a single agent execution run."""
+    tokens_used: int = 0
+    tool_calls_count: int = 0
+    duration_ms: float = 0.0
+    status: str = "success"
+
+
+class StageResult(BaseModel):
+    """Result of an agent stage including stats and opinion."""
+    agent_name: str
+    stats: AgentRunStats
+    opinion: AgentOpinion
+
+
 class AgentContext(BaseModel):
     """Shared context passed between agents in the multi-agent system."""
     symbol: str
