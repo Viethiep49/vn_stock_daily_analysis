@@ -30,7 +30,7 @@ def test_pipeline_run_success(pipeline, mock_llm_client):
             signal=Signal.BUY, confidence=0.85, reasoning="Final decision: BUY"
         ))
         
-        result = pipeline.run("VNM")
+        result, context = pipeline.run("VNM")
         
         assert isinstance(result, AgentOpinion)
         assert result.signal == Signal.BUY
