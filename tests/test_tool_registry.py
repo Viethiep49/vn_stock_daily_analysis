@@ -74,3 +74,30 @@ def test_scoring_tools_execution_error():
         
         fund_result = default_registry.execute("calculate_fundamental_score_tool", symbol="FPT")
         assert fund_result == {"error": "Failed to fetch fundamental data: API error"}
+
+def test_news_tool_registration():
+    from src.agents.tools.registry import default_registry
+    schemas = default_registry.get_schemas()
+    names = [s["function"]["name"] for s in schemas]
+    assert "get_stock_news_tool" in names
+
+def test_news_tool_execution():
+    from src.agents.tools.registry import default_registry
+    from unittest.mock import patch
+    
+    with patch('src.agents.tools.registry.get_stock_news') as mock_news:
+        mock_news.return_value = [{"title": "News 1"}]
+        
+        result = default_registry.execute("get_stock_news_tool", symbol="FPT")
+        assert result == [{"title": "News 1"}]
+        mock_news.assert_called_once_with("FPT")
+
+def test_news_tool_execution_error():
+    from src.agents.tools.registry import default_registry
+    from unittest.mock import patch
+    
+    with patch('src.agents.tools.registry.get_stock_news') as mock_news:
+        mock_news.side_effect = Exception("News API error")
+        
+        result = default_registry.execute("get_stock_news_tool", symbol="FPT")
+        assert result == {"error": "Failed to fetch news: News API error"}

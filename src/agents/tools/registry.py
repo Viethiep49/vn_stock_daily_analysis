@@ -5,6 +5,7 @@ from src.data_provider.vnstock_provider import VNStockProvider
 from src.market.circuit_breaker import CircuitBreakerHandler
 from src.scoring.technical import calculate_technical_score
 from src.scoring.fundamental import calculate_f_score
+from src.news.vn_news_scraper import get_stock_news
 
 class ToolRegistry:
     def __init__(self):
@@ -100,9 +101,17 @@ def calculate_fundamental_score_tool(symbol: str) -> dict:
     except Exception as e:
         return {"error": f"Failed to fetch fundamental data: {str(e)}"}
 
+def get_stock_news_tool(symbol: str):
+    """Lấy danh sách tin tức mới nhất về một mã cổ phiếu."""
+    try:
+        return get_stock_news(symbol)
+    except Exception as e:
+        return {"error": f"Failed to fetch news: {str(e)}"}
+
 default_registry = ToolRegistry()
 default_registry.register("get_quote", get_quote)
 default_registry.register("get_history", get_history)
 default_registry.register("check_circuit_breaker", check_circuit_breaker)
 default_registry.register("calculate_technical_score_tool", calculate_technical_score_tool)
 default_registry.register("calculate_fundamental_score_tool", calculate_fundamental_score_tool)
+default_registry.register("get_stock_news_tool", get_stock_news_tool)
