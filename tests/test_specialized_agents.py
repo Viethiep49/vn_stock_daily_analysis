@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from src.agents.technical_agent import TechnicalAgent
 from src.agents.risk_agent import RiskAgent
 from src.agents.decision_agent import DecisionAgent
+from src.agents.intel_agent import IntelAgent
 from src.agents.protocols import AgentContext, AgentOpinion, Signal
 
 @pytest.fixture
@@ -54,3 +55,15 @@ def test_decision_agent_prompts(mock_llm_client):
 def test_decision_agent_no_tools(mock_llm_client):
     agent = DecisionAgent(llm_client=mock_llm_client)
     assert len(agent.registry.get_schemas()) == 0
+
+def test_intel_agent_prompts(mock_llm_client):
+    agent = IntelAgent(llm_client=mock_llm_client)
+    context = AgentContext(symbol="TCB")
+    
+    system_prompt = agent.system_prompt(context)
+    user_prompt = agent.user_prompt(context)
+    
+    assert "Market Intelligence Expert" in system_prompt
+    assert "get_stock_news_tool" in system_prompt
+    assert "TCB" in user_prompt
+
