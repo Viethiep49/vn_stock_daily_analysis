@@ -63,11 +63,35 @@ class AgentPipeline:
         
         # 1. Initialize context and populate initial data
         context = AgentContext(symbol=symbol)
+        context.data['scores'] = {}
         
         try:
             # Populate basic stock info and current price
             context.data["stock_info"] = self.data_provider.get_stock_info(symbol)
             context.data["realtime_quote"] = self.data_provider.get_realtime_quote(symbol)
+            
+            # Fetch historical data for technical score
+            from datetime import datetime, timedelta
+            end_date = datetime.today().strftime('%Y-%m-%d')
+            start_date = (datetime.today() - timedelta(days=100)).strftime('%Y-%m-%d')
+            hist_df = self.data_provider.get_historical_data(symbol, start=start_date, end=end_date)
+            
+            if not hist_df.empty:
+                from src.scoring.technical import calculate_technical_score
+                context.data['scores']['technical'] = calculate_technical_score(hist_df)
+            else:
+                context.data['scores']['technical'] = None
+
+            # Fetch financial data for fundamental score
+            fin_report = self.data_provider.get_financial_report(symbol)
+            if fin_report and 'data' in fin_report:
+                import pandas as pd
+                from src.scoring.fundamental import calculate_f_score
+                fin_df = pd.DataFrame([fin_report['data']])
+                context.data['scores']['fundamental'] = calculate_f_score(fin_df)
+            else:
+                context.data['scores']['fundamental'] = None
+
         except Exception as e:
             logger.error(f"Error pre-fetching data for {symbol}: {e}")
 

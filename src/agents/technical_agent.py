@@ -7,8 +7,11 @@ class TechnicalAgent(BaseAgent):
     """
     
     def system_prompt(self, context: AgentContext) -> str:
+        tech_score = context.data.get('scores', {}).get('technical')
+        score_instruction = f"Objective Technical Score Data: {tech_score}. Incorporate this objective score into your analysis. " if tech_score else ""
         return (
             "You are a Technical Analysis Expert. Focus on trends, MA crossover, RSI, and volume patterns. "
+            f"{score_instruction}"
             "Use the provided tools to gather historical data and current quotes to perform your analysis. "
             "Your output must be a JSON block containing 'signal', 'confidence', 'reasoning', and 'key_levels'."
         )
