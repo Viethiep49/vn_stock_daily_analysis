@@ -4,7 +4,9 @@ from .technical_agent import TechnicalAgent
 from .risk_agent import RiskAgent
 from .decision_agent import DecisionAgent
 from .intel_agent import IntelAgent
+from .skill_agent import SkillAgent
 from .pipeline import AgentPipeline
+from .skills import list_skills, get_skill_content
 
 __all__ = [
     "Signal", 
@@ -15,5 +17,8 @@ __all__ = [
     "RiskAgent",
     "DecisionAgent",
     "IntelAgent",
-    "AgentPipeline"
+    "SkillAgent",
+    "AgentPipeline",
+    "list_skills",
+    "get_skill_content"
 ]
