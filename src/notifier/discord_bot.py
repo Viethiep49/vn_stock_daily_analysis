@@ -45,11 +45,21 @@ class DiscordNotifier(BaseNotifier):
         # New Scoring Engine data
         report = report_data.get('report')
         score_field = None
+        breakdown_field = None
         if report:
             score_field = {
                 "name": "⭐ Score & Signal",
                 "value": f"**{report.composite:.1f}/100** | **{report.final_signal.value}**",
                 "inline": True
+            }
+            breakdown_lines = "\n".join(
+                f"`{card.strategy_name}`: {card.score} | {card.signal.value}"
+                for card in report.cards
+            )
+            breakdown_field = {
+                "name": "📋 Scorecard Breakdown",
+                "value": breakdown_lines or "N/A",
+                "inline": False
             }
 
         if opinion:
@@ -117,8 +127,11 @@ class DiscordNotifier(BaseNotifier):
         }
         
         if score_field:
-            # Insert at second position if possible or just append
+            # Insert at second position if possible
             embed["fields"].insert(1, score_field)
+            
+        if breakdown_field:
+            embed["fields"].append(breakdown_field)
 
         if cb and cb.get('warning'):
             embed["fields"].append({

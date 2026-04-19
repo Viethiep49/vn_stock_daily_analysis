@@ -56,7 +56,7 @@ class TelegramNotifier(BaseNotifier):
 
         message = f"📊 *VN STOCK REPORT: {symbol}*\n\n"
         message += f"🏢 *Công ty*: {info.get('company_name')} | {info.get('industry')}\n"
-        message += f"💰 *Giá*: {quote.get('price', 0):,.0f} đ\n"
+        message += f"💰 *Giá*: {quote.get('price', 0) * 1000:,.0f} đ\n"
         message += score_text
 
         if cb and cb.get('warning'):
