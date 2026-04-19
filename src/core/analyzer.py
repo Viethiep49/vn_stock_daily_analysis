@@ -34,7 +34,7 @@ class Analyzer:
         self.aggregator = ScoreAggregator()
         self.explainer = LLMExplainer(self.llm)
 
-    def analyze(self, symbol: str) -> Dict[str, Any]:
+    def analyze(self, symbol: str, **kwargs) -> Dict[str, Any]:
         """The main analysis pipeline."""
         logger.info(f"Bắt đầu phân tích cho mã {symbol}")
 
@@ -87,27 +87,36 @@ class Analyzer:
             report.circuit_breaker = cb_status
 
             # 7. AI Explanation
-            narrative = self.explainer.explain(report)
+            narrative = self.explainer.explain(report, model=kwargs.get('model'))
             report.narrative = narrative
 
             # 8. Result Packaging
-            # We return a dict that matches what App.py and Notifier expects
-            # plus the new report object
+            tech_summary = (
+                f"RSI14: {indicators.RSI14:.1f} | MACD: {indicators.MACD:.3f} (hist: {indicators.MACD_hist:.3f})\n"
+                f"MA5: {indicators.MA5:.2f} | MA20: {indicators.MA20:.2f} | MA50: {indicators.MA50:.2f}\n"
+                f"BB: {indicators.BB_lower:.2f} / {indicators.BB_mid:.2f} / {indicators.BB_upper:.2f}\n"
+                f"ATR14: {indicators.ATR14:.2f} | Vol ratio: {indicators.volume_ratio:.2f}x\n"
+                f"Support: {indicators.support_20:.2f} | Resistance: {indicators.resistance_20:.2f}"
+            )
+
             return {
                 "symbol": normalized_symbol,
                 "status": "success",
                 "info": info,
                 "quote": quote,
-                "report": report,  # The new full object
-                "llm_analysis": narrative,  # For backward compatibility with existing dashboard
+                "report": report,
+                "llm_analysis": narrative,
+                "tech_summary": tech_summary,
                 "circuit_breaker": cb_status,
                 "indicators": indicators,
             }
 
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")
-            return {"symbol": symbol, "error": str(e), "status": "failed"}
-
-        except Exception as e:
-            logger.error(f"Error analyzing {symbol}: {e}")
-            return {"symbol": symbol, "error": str(e), "status": "failed"}
+            import traceback
+            return {
+                "symbol": symbol, 
+                "error": str(e), 
+                "status": "failed",
+                "traceback": traceback.format_exc()
+            }
