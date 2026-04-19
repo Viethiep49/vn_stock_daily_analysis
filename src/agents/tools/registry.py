@@ -1,7 +1,10 @@
 import inspect
+from datetime import datetime, timedelta
 from typing import Dict, Any, Callable, List
 from src.data_provider.vnstock_provider import VNStockProvider
 from src.market.circuit_breaker import CircuitBreakerHandler
+from src.scoring.technical import calculate_technical_score
+from src.scoring.fundamental import calculate_f_score
 
 class ToolRegistry:
     def __init__(self):
@@ -70,7 +73,36 @@ def check_circuit_breaker(symbol: str, current_price: float, reference_price: fl
     handler.set_reference_price(symbol, reference_price)
     return handler.check_limit_status(symbol, current_price)
 
+def calculate_technical_score_tool(symbol: str) -> dict:
+    """Tính điểm kỹ thuật (Technical Score) cho một mã cổ phiếu."""
+    try:
+        provider = VNStockProvider()
+        end_date = datetime.today().strftime('%Y-%m-%d')
+        start_date = (datetime.today() - timedelta(days=150)).strftime('%Y-%m-%d')
+        df = provider.get_historical_data(symbol, start_date, end_date)
+        if df is None or getattr(df, "empty", True):
+            return {"error": f"No historical data found for {symbol}"}
+        return calculate_technical_score(df)
+    except Exception as e:
+        return {"error": f"Failed to fetch technical data: {str(e)}"}
+
+def calculate_fundamental_score_tool(symbol: str) -> dict:
+    """Tính điểm cơ bản (Fundamental Piotroski F-Score) cho một mã cổ phiếu."""
+    try:
+        provider = VNStockProvider()
+        report = provider.get_financial_report(symbol)
+        if not report or 'data' not in report:
+            return {"error": f"No fundamental data found for {symbol}"}
+        
+        import pandas as pd
+        df = pd.DataFrame([report['data']])
+        return calculate_f_score(df)
+    except Exception as e:
+        return {"error": f"Failed to fetch fundamental data: {str(e)}"}
+
 default_registry = ToolRegistry()
 default_registry.register("get_quote", get_quote)
 default_registry.register("get_history", get_history)
 default_registry.register("check_circuit_breaker", check_circuit_breaker)
+default_registry.register("calculate_technical_score_tool", calculate_technical_score_tool)
+default_registry.register("calculate_fundamental_score_tool", calculate_fundamental_score_tool)
