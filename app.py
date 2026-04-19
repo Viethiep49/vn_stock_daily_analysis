@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
-from src.core.analyzer import Analyzer
-from src.agents.pipeline import AgentPipeline
+from src.agents.factory import AnalyzerFactory
 from dotenv import load_dotenv
 import os
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Page configuration
 st.set_page_config(
@@ -46,6 +45,23 @@ st.markdown("Hệ thống AI phân tích chứng khoán Việt Nam hàng ngày (
 with st.sidebar:
     st.header("Cài đặt")
     symbol_input = st.text_input("Mã cổ phiếu", value="VNM.HO", help="Ví dụ: VNM.HO, FPT.HO, ACB.HN").upper()
+    
+    # Model Selection
+    model_options = [
+        "Default (From .env)",
+        "openrouter/google/gemma-4-26b-a4b-it:free",
+        "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        "openrouter/google/gemini-flash-1.5-exp:free",
+        "Custom..."
+    ]
+    selected_model_label = st.selectbox("LLM Model", options=model_options)
+    
+    selected_model = None
+    if selected_model_label == "Custom...":
+        selected_model = st.text_input("Nhập model (vd: openai/gpt-4o)")
+    elif selected_model_label != "Default (From .env)":
+        selected_model = selected_model_label
+
     use_agents = st.toggle("Sử dụng Multi-Agent Analysis", value=False, help="Kích hoạt hệ thống nhiều Agent chuyên biệt")
     analyze_button = st.button("🚀 Bắt đầu phân tích")
     
@@ -62,7 +78,7 @@ if analyze_button:
     with st.spinner(f"Đang phân tích mã {symbol_input}..."):
         try:
             analyzer = AnalyzerFactory.create(use_agents=use_agents)
-            result = analyzer.analyze(symbol_input)
+            result = analyzer.analyze(symbol_input, model=selected_model)
             
             if result.get("status") == "failed":
                 st.error(f"❌ Lỗi: {result.get('error')}")
@@ -95,35 +111,23 @@ if analyze_button:
                     st.divider()
                     st.write(f"📈 **Chỉ số kỹ thuật:**")
                     st.code(result.get("tech_summary"))
-
-                with col2:
-                    st.subheader("🤖 Phân tích từ AI Agent")
-                    st.markdown(f"""
-                    <div class="report-card">
-                        {result.get("llm_analysis")}
-                    </div>
-                    """, unsafe_allow_html=True)
                     
-                st.success("✅ Phân tích hoàn tất!")
-                
-        except Exception as e:
-            st.error(f"Đã xảy ra lỗi hệ thống: {str(e)}")
-            import traceback
-            st.code(traceback.format_exc())
-else:
-    # Placeholder state
-    st.info("Vui lòng nhập mã cổ phiếu ở thanh bên trái và nhấn nút 'Bắt đầu phân tích'.")
-
-# Footer
-st.divider()
-st.caption("Powered by vnstock & LiteLLM | Dữ liệu mang tính chất tham khảo.")
-                cb = result.get("circuit_breaker")
-                    if cb and cb.get('warning'):
-                        st.warning(cb.get('warning'))
-                    
-                    st.divider()
-                    st.write(f"📈 **Chỉ số kỹ thuật:**")
-                    st.code(result.get("tech_summary"))
+                    # Scoring Breakdown if available
+                    report = result.get("report")
+                    if report:
+                        st.divider()
+                        st.write(f"⭐ **Điểm số & Tín hiệu:**")
+                        st.subheader(f"{report.composite:.1f}/100 - {report.final_signal.value}")
+                        
+                        df_cards = pd.DataFrame([
+                            {
+                                "Chiến lược": card.strategy_name,
+                                "Điểm": card.score,
+                                "Tín hiệu": card.signal.value,
+                                "Lý do": card.reason
+                            } for card in report.cards
+                        ])
+                        st.table(df_cards)
 
                 with col2:
                     st.subheader("🤖 Phân tích từ AI Agent")

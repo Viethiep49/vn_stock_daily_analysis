@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    load_dotenv()
+    load_dotenv(override=True)
 
     parser = argparse.ArgumentParser(description="VN Stock Daily Analysis MVP")
     parser.add_argument(
@@ -57,13 +57,13 @@ def main():
         logger.error("Vui lòng cung cấp mã cổ phiếu. (VD: --symbol VNM.HO)")
         sys.exit(1)
 
-    # TODO: In real implementation, check trading calendar if not force_run
+    # Check trading calendar if not force_run
     if args.schedule and not args.force_run:
         logger.info("Chạy chế độ schedule, kiểm tra ngày giao dịch...")
-        # from src.market.trading_calendar import is_trading_day
-        # if not is_trading_day():
-        #     logger.info("Hôm nay không phải ngày giao dịch. Thoát.")
-        #     sys.exit(0)
+        from src.market.trading_calendar import is_trading_day
+        if not is_trading_day():
+            logger.info("Hôm nay không phải ngày giao dịch hoặc là ngày lễ. Dừng phân tích.")
+            sys.exit(0)
 
     if args.agents:
         logger.info(f"Sử dụng Multi-Agent Analysis cho mã {args.symbol}...")
