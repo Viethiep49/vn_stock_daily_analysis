@@ -4,9 +4,9 @@ This document provides a high-level overview of the VN Stock Daily Analysis syst
 
 ## System Overview
 
-The system is designed to provide automated stock analysis for the Vietnamese stock market. it combines quantitative scoring (Technical & Fundamental) with qualitative LLM-based analysis to generate comprehensive reports delivered via messaging bots.
+The system is designed to provide automated stock analysis for the Vietnamese stock market. It combines quantitative metrics with qualitative LLM-based analysis to generate comprehensive reports delivered via messaging bots.
 
-The core philosophy is a modular pipeline: **Fetch → Score → Analyze → Notify**.
+The core philosophy is a modular pipeline: **Fetch → Process → Analyze → Notify**.
 
 ## Core Flow
 
@@ -14,70 +14,58 @@ The standard execution flow is orchestrated by the `Analyzer` class. Below is a 
 
 ```mermaid
 sequenceDiagram
-    participant Main as main.py
+    participant Main as main.py / app.py
     participant Analyzer as Analyzer (Core)
     participant Provider as VnstockProvider
-    participant Scorer as Technical/Fundamental Scorer
     participant LLM as LLMClient
     participant Notifier as Telegram/Discord Notifier
 
     Main->>Analyzer: analyze(symbol)
     Analyzer->>Provider: fetch_data(symbol)
-    Provider-->>Analyzer: raw_data (Price, Info, Financials)
-    Analyzer->>Scorer: score(raw_data)
-    Scorer-->>Analyzer: quantitative_scores (0-100)
-    Analyzer->>LLM: generate(context, scores)
+    Provider-->>Analyzer: raw_data (Price, Info, History)
+    Analyzer->>Analyzer: Calculate Tech Indicators
+    Analyzer->>LLM: generate(context)
     LLM-->>Analyzer: llm_report (Natural Language)
-    Analyzer-->>Main: final_result (JSON/Dict)
+    Analyzer-->>Main: final_result (Dict)
     Main->>Notifier: send_report(final_result)
 ```
 
 ## Component Roles
 
 ### Core Components
-- **`main.py`**: The entry point. Handles CLI arguments, manages the watchlist, and selects the operational mode (Standard or Multi-Agent).
-- **`src/core/analyzer.py` (`Analyzer`)**: The central orchestrator for the standard mode. It coordinates data fetching, scoring, and report generation.
-- **`src/core/llm_client.py` (`LLMClient`)**: Interface for interacting with Large Language Models (via LiteLLM). It formats prompts and parses responses.
+- **`main.py`**: The CLI entry point. Handles arguments like `--symbol`, `--dry-run`, and `--force-run`.
+- **`app.py`**: The Streamlit-based web dashboard interface.
+- **`src/core/analyzer.py` (`Analyzer`)**: The central orchestrator. It coordinates data fetching, technical calculation, and LLM prompting.
+- **`src/core/llm_client.py` (`LiteLLMClient`)**: Interface for interacting with Large Language Models via `litellm`. It handles model routing and fallbacks.
 
 ### Data & Market Layer
 - **`src/data_provider/`**:
   - `VnstockProvider`: Primary data source using the `vnstock` library.
   - `FallbackRouter`: Ensures high availability by switching between providers if one fails.
 - **`src/market/`**:
-  - `CircuitBreaker`: Monitors price limits (ceiling/floor) and issues warnings.
+  - `CircuitBreakerHandler`: Monitors price limits (ceiling/floor) based on reference prices.
   - `SectorMapping`: Maps symbols to their respective industry sectors.
 
-### Scoring & Analysis
-- **`src/scoring/`**:
-  - `TechnicalScorer`: Evaluates trend, momentum, volume, and volatility.
-  - `FundamentalScorer`: Evaluates profitability, leverage, efficiency, and valuation (including Piotroski F-Score).
-- **`src/strategies/`**: Contains YAML-defined technical strategies that can be loaded dynamically.
-
-### Agents (Multi-Agent Mode)
-- **`src/agents/`**: Contains the multi-agent pipeline logic.
-  - `TechnicalAgent`: Focuses on price action and indicators.
-  - `RiskAgent`: Analyzes potential downsides and market risks.
-  - `DecisionAgent`: Synthesizes all opinions into a final recommendation.
-  - `AgentPipeline`: Orchestrates the sequence and communication between agents.
+### Analysis & Strategies
+- **`src/strategies/`**: Contains YAML-defined technical strategies. These are used to inject specific reasoning logic into the LLM prompt.
 
 ### Distribution
 - **`src/notifier/`**:
   - `TelegramNotifier`: Sends formatted Markdown reports to Telegram.
-  - `DiscordNotifier`: Sends reports to Discord channels via webhooks or bot interface.
+  - `DiscordNotifier`: Sends reports to Discord channels via webhooks.
 
 ### Utilities
-- **`src/utils/`**: Shared logic for caching, validation, and configuration management.
+- **`src/utils/`**: Shared logic for caching, validation, and configuration.
 
 ## Directory Structure
 
 | Directory | Responsibility |
 |-----------|----------------|
-| `src/agents/` | Multi-agent system components and pipeline. |
-| `src/core/` | Main business logic, orchestrators, and LLM interfaces. |
+| `src/core/` | Main business logic and orchestrators. |
 | `src/data_provider/` | Data retrieval logic and provider abstractions. |
 | `src/market/` | Market rules, sector data, and safety checks. |
-| `src/news/` | News fetching and sentiment analysis (planned). |
 | `src/notifier/` | Notification service implementations. |
-| `src/scoring/` | Quantitative scoring engines. |
 | `src/strategies/` | Configuration-based technical strategies. |
 | `src/utils/` | Shared utilities, cache, and validators. |
+| `tests/` | Unit and integration tests. |
+| `docs/` | System documentation. |
