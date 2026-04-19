@@ -1,4 +1,5 @@
 import os
+from typing import Any
 from litellm import completion
 
 
@@ -27,22 +28,53 @@ class LiteLLMClient:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ]
+        
+        response = self.chat(messages)
+        if hasattr(response, 'choices'):
+            return response.choices[0].message.content
+        return str(response)
+
+    def chat(self, messages: list, tools: list = None, tool_choice: str = "auto") -> Any:
+        if not self._has_api_key():
+            # Minimal mock for when no API key is present
+            class MockResponse:
+                def __init__(self, content):
+                    self.choices = [MockChoice(content)]
+            class MockChoice:
+                def __init__(self, content):
+                    self.message = MockMessage(content)
+            class MockMessage:
+                def __init__(self, content):
+                    self.content = content
+                    self.tool_calls = None
+                    self.role = "assistant"
+            return MockResponse("MOCK ANALYSIS: No API key provided.")
 
         last_error = None
         for model in self.models:
             if not model:
                 continue
             try:
-                kwargs = dict(model=model, messages=messages, temperature=0.2, max_tokens=2000)
+                kwargs = dict(
+                    model=model, 
+                    messages=messages, 
+                    temperature=0.2, 
+                    max_tokens=2000
+                )
+                if tools:
+                    kwargs["tools"] = tools
+                    kwargs["tool_choice"] = tool_choice
+                
                 openrouter_key = os.getenv("OPENROUTER_API_KEY")
                 if openrouter_key and model.startswith("openrouter/"):
                     kwargs["api_key"] = openrouter_key
+                
                 response = completion(**kwargs)
-                return response.choices[0].message.content
+                return response
             except Exception as e:
                 last_error = e
                 continue
 
         if last_error:
             raise RuntimeError(f"All LLM models failed. Last error: {last_error}")
-        return "No LLM models configured."
+        raise RuntimeError("No LLM models configured.")
