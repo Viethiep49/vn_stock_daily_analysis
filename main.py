@@ -45,6 +45,11 @@ def main():
         "--agents",
         action="store_true",
         help="Sử dụng hệ thống Multi-Agent để phân tích")
+    parser.add_argument(
+        "--skill",
+        type=str,
+        default=None,
+        help="Sử dụng kỹ năng/chiến lược cụ thể (VD: vsa, canslim)")
 
     args = parser.parse_args()
 
@@ -62,9 +67,11 @@ def main():
 
     if args.agents:
         logger.info(f"Sử dụng Multi-Agent Analysis cho mã {args.symbol}...")
+        if args.skill:
+            logger.info(f"Kỹ năng áp dụng: {args.skill}")
         
-    analyzer = AnalyzerFactory.create(use_agents=args.agents)
-    result = analyzer.analyze(args.symbol)
+    analyzer = AnalyzerFactory.create(use_agents=args.agents, skill=args.skill)
+    result = analyzer.analyze(args.symbol, skill=args.skill)
 
     print("\n" + "=" * 50)
     print(f"BÁO CÁO PHÂN TÍCH: {result.get('symbol', args.symbol)}")

@@ -13,11 +13,17 @@ def test_agent_opinion_valid():
     opinion = AgentOpinion(
         signal=Signal.BUY,
         confidence=0.8,
+        sentiment_score=75,
+        operation_advice="Strong momentum, consider entering at support.",
+        key_points=["Rising volume", "Bullish MACD"],
         reasoning="Bullish momentum",
         key_levels={"support": 100.0, "resistance": 120.0, "target": 150.0}
     )
     assert opinion.signal == Signal.BUY
     assert opinion.confidence == 0.8
+    assert opinion.sentiment_score == 75
+    assert opinion.operation_advice == "Strong momentum, consider entering at support."
+    assert "Rising volume" in opinion.key_points
     assert opinion.key_levels["support"] == 100.0
 
 def test_agent_opinion_invalid_confidence():

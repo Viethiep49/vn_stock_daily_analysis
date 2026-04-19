@@ -47,6 +47,9 @@ def test_decision_agent_prompts(mock_llm_client):
     user_prompt = agent.user_prompt(context)
     
     assert "Lead Investment Decision Agent" in system_prompt
+    assert "sentiment_score" in system_prompt
+    assert "operation_advice" in system_prompt
+    assert "key_points" in system_prompt
     assert "TechnicalAgent" in user_prompt
     assert "BUY" in user_prompt
     assert "RiskAgent" in user_prompt

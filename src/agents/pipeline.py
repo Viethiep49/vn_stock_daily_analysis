@@ -1,8 +1,11 @@
-from typing import Tuple
+from typing import Tuple, Optional
 from src.agents.protocols import AgentContext, AgentOpinion, Signal
 from src.agents.technical_agent import TechnicalAgent
 from src.agents.risk_agent import RiskAgent
 from src.agents.decision_agent import DecisionAgent
+from src.agents.intel_agent import IntelAgent
+from src.agents.skill_agent import SkillAgent
+from src.agents.memory import AgentMemory
 from src.data_provider.vnstock_provider import VNStockProvider
 from src.core.llm_client import LiteLLMClient
 import logging
@@ -18,9 +21,11 @@ class AgentPipeline:
     def __init__(self, llm_client=None):
         self.llm_client = llm_client or LiteLLMClient()
         self.data_provider = VNStockProvider()
+        self.memory = AgentMemory()
         self.technical_agent = TechnicalAgent(llm_client=self.llm_client)
         self.risk_agent = RiskAgent(llm_client=self.llm_client)
         self.decision_agent = DecisionAgent(llm_client=self.llm_client)
+        self.intel_agent = IntelAgent(llm_client=self.llm_client)
 
     def _apply_risk_override(self, context: AgentContext, final_opinion: AgentOpinion) -> AgentOpinion:
         risk_flags = context.risk_flags
@@ -54,7 +59,7 @@ class AgentPipeline:
                 
         return final_opinion
 
-    def run(self, symbol: str) -> Tuple[AgentOpinion, AgentContext]:
+    def run(self, symbol: str, skill_name: Optional[str] = None) -> Tuple[AgentOpinion, AgentContext]:
         """
         Run the full analysis pipeline for a given symbol.
         Returns a tuple of (final_opinion, context).
@@ -64,6 +69,11 @@ class AgentPipeline:
         # 1. Initialize context and populate initial data
         context = AgentContext(symbol=symbol)
         context.data['scores'] = {}
+        
+        # Fetch historical memory
+        history = self.memory.get_recent_history(symbol)
+        context.metadata['history'] = history
+        context.metadata['accuracy'] = self.memory.calculate_accuracy(symbol)
         
         try:
             # Populate basic stock info and current price
@@ -120,7 +130,17 @@ class AgentPipeline:
         except Exception as e:
             logger.error(f"IntelAgent failed for {symbol}: {e}")
 
-        # 5. Run Decision Making Agent (Final Synthesis)
+        # 5. Run Skill Agent (if requested)
+        if skill_name:
+            logger.info(f"Running SkillAgent for {symbol} with skill: {skill_name}...")
+            try:
+                skill_agent = SkillAgent(skill_name, llm_client=self.llm_client)
+                skill_opinion = skill_agent.run(context)
+                context.opinions["skill"] = skill_opinion
+            except Exception as e:
+                logger.error(f"SkillAgent failed for {symbol} ({skill_name}): {e}")
+
+        # 6. Run Decision Making Agent (Final Synthesis)
         logger.info(f"Running DecisionAgent for {symbol}...")
         final_decision = None
         try:
@@ -141,6 +161,10 @@ class AgentPipeline:
 
         # Apply Risk Override
         final_decision = self._apply_risk_override(context, final_decision)
+        
+        # Save to memory
+        current_price = context.data.get("realtime_quote", {}).get("last_price", 0)
+        self.memory.save_analysis(symbol, final_decision.signal, current_price, final_decision)
         
         logger.info(f"Pipeline completed for {symbol}. Final signal: {final_decision.signal}")
         return final_decision, context

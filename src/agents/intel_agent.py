@@ -16,10 +16,17 @@ class IntelAgent(BaseAgent):
         super().__init__(llm_client, registry)
 
     def system_prompt(self, context: AgentContext) -> str:
+        history = context.metadata.get('history', [])
+        history_instruction = ""
+        if history:
+            history_summary = "\n".join([f"- {h['timestamp']}: {h['signal']} at {h['price']}" for h in history])
+            history_instruction = f"\nRecent analysis history for {context.symbol}:\n{history_summary}\nCheck if recent news confirms or contradicts past analysis."
+
         return (
             "You are a Market Intelligence Expert. You gather news, assess sentiment, and identify catalysts or risks. "
             "Use `get_stock_news_tool` to fetch recent news. "
-            "Your goal is to determine if the news is positive (BUY), negative (SELL), or neutral (HOLD). "
+            f"{history_instruction}"
+            "\nYour goal is to determine if the news is positive (BUY), negative (SELL), or neutral (HOLD). "
             "Provide your final answer as a JSON block matching the AgentOpinion schema:\n"
             "{\n"
             '  "signal": "BUY" | "SELL" | "HOLD" | "STRONG_BUY" | "STRONG_SELL",\n'

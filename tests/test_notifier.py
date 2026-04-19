@@ -41,6 +41,21 @@ def report_with_warning(sample_report):
     return r
 
 
+@pytest.fixture
+def report_with_opinion(sample_report):
+    r = dict(sample_report)
+    r["opinion"] = {
+        "signal": "STRONG_BUY",
+        "confidence": 0.95,
+        "sentiment_score": 85,
+        "operation_advice": "Mua mạnh tại vùng hỗ trợ.",
+        "key_points": ["Dòng tiền lớn tham gia", "Đột phá kháng cự"],
+        "reasoning": "Phân tích chi tiết...",
+        "key_levels": {"support": 60.0, "resistance": 65.0, "target": 70.0}
+    }
+    return r
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # TelegramNotifier Tests
 # ────────────────────────────────────────────────────────────────────────────
@@ -128,6 +143,29 @@ class TestTelegramNotifier:
             n.send_report(report_with_warning)
 
         assert "TRẦN" in sent_texts[0]
+
+    def test_send_report_includes_opinion(self, monkeypatch, report_with_opinion):
+        monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:TOKEN")
+        monkeypatch.setenv("TELEGRAM_CHAT_ID", "-100999")
+
+        sent_texts = []
+
+        def fake_post(url, json=None, **kwargs):
+            sent_texts.append(json.get('text', ''))
+            r = MagicMock()
+            r.raise_for_status.return_value = None
+            return r
+
+        with patch("src.notifier.telegram_bot.requests.post", side_effect=fake_post):
+            n = TelegramNotifier()
+            n.send_report(report_with_opinion)
+
+        text = sent_texts[0]
+        assert "STRONG_BUY" in text
+        assert "Sentiment" in text
+        assert "Lời khuyên" in text
+        assert "Dòng tiền lớn" in text
+        assert "Mức kỹ thuật" in text
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -217,3 +255,28 @@ class TestDiscordNotifier:
 
         embed = sent_payloads[0]['embeds'][0]
         assert "VNM" in embed['title']
+
+    def test_send_report_includes_opinion(self, monkeypatch, report_with_opinion):
+        monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/123/abc")
+
+        sent_payloads = []
+
+        def fake_post(url, json=None, **kwargs):
+            sent_payloads.append(json)
+            r = MagicMock()
+            r.raise_for_status.return_value = None
+            return r
+
+        with patch("src.notifier.discord_bot.requests.post", side_effect=fake_post):
+            n = DiscordNotifier()
+            n.send_report(report_with_opinion)
+
+        embed = sent_payloads[0]['embeds'][0]
+        assert "Lời khuyên" in embed['description']
+        fields = {f['name']: f['value'] for f in embed['fields']}
+        assert "🎯 Tín Hiệu" in fields
+        assert "STRONG_BUY" in fields["🎯 Tín Hiệu"]
+        assert "🌡️ Sentiment" in fields
+        assert "85/100" in fields["🌡️ Sentiment"]
+        assert "📌 Điểm Nhấn" in fields
+        assert "Dòng tiền lớn" in fields["📌 Điểm Nhấn"]

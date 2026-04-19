@@ -41,7 +41,7 @@ class TelegramNotifier(BaseNotifier):
         info = report_data.get('info', {})
         quote = report_data.get('quote', {})
         cb = report_data.get('circuit_breaker', {})
-        llm = report_data.get('llm_analysis', 'No analysis')
+        opinion = report_data.get('opinion')
 
         message = f"📊 *VN STOCK REPORT: {symbol}*\n\n"
         message += f"🏢 *Công ty*: {info.get('company_name')} | {info.get('industry')}\n"
@@ -50,7 +50,25 @@ class TelegramNotifier(BaseNotifier):
         if cb and cb.get('warning'):
             message += f"⚠️ *Cảnh báo*: {cb.get('warning')}\n"
 
-        message += f"\n🤖 *Nhận định LLM*:\n{llm}\n"
+        if opinion:
+            message += f"\n🎯 *Tín hiệu*: `{opinion.get('signal')}` ({opinion.get('confidence')*100:.0f}%)\n"
+            message += f"🌡️ *Sentiment*: `{opinion.get('sentiment_score')}/100`\n"
+            message += f"💡 *Lời khuyên*: _{opinion.get('operation_advice')}_\n"
+            
+            if opinion.get('key_points'):
+                message += "\n📌 *Điểm nhấn*:\n"
+                for point in opinion.get('key_points'):
+                    message += f"• {point}\n"
+            
+            levels = opinion.get('key_levels', {})
+            if levels:
+                message += f"\n📐 *Mức kỹ thuật*: HT: {levels.get('support', '-')} | KC: {levels.get('resistance', '-')} | Target: {levels.get('target', '-')}\n"
+            
+            message += f"\n📝 *Phân tích*:\n{opinion.get('reasoning')}\n"
+        else:
+            llm = report_data.get('llm_analysis', 'No analysis')
+            message += f"\n🤖 *Nhận định LLM*:\n{llm}\n"
+
         message += "\n---"
 
         return self.send_message(message)

@@ -8,12 +8,15 @@ class MultiAgentAdapter:
     Adapter to wrap AgentPipeline so it exposes the same `analyze(symbol)` 
     interface as the legacy `Analyzer`.
     """
-    def __init__(self):
+    def __init__(self, skill: str = None):
         self.pipeline = AgentPipeline()
+        self.skill = skill
 
-    def analyze(self, symbol: str) -> dict:
+    def analyze(self, symbol: str, skill: str = None) -> dict:
         try:
-            opinion, context = self.pipeline.run(symbol)
+            # Use the skill provided at analyze time, or fallback to the one from init
+            effective_skill = skill or self.skill
+            opinion, context = self.pipeline.run(symbol, skill_name=effective_skill)
             
             # Format the output to be compatible with both main.py and app.py
             llm_analysis = f"### Final Signal: {opinion.signal}\n**Confidence: {opinion.confidence:.2f}**\n\n{opinion.reasoning}"
@@ -31,7 +34,16 @@ class MultiAgentAdapter:
                 "circuit_breaker": context.data.get("circuit_breaker", {}), 
                 "tech_summary": "Phân tích bởi Multi-Agent System (Technical + Risk + Decision Agents)",
                 "llm_analysis": llm_analysis,
-                "is_multi_agent": True
+                "is_multi_agent": True,
+                "opinion": {
+                    "signal": opinion.signal,
+                    "confidence": opinion.confidence,
+                    "sentiment_score": opinion.sentiment_score,
+                    "operation_advice": opinion.operation_advice,
+                    "key_points": opinion.key_points,
+                    "reasoning": opinion.reasoning,
+                    "key_levels": opinion.key_levels
+                }
             }
         except Exception as e:
             import traceback
@@ -44,7 +56,7 @@ class MultiAgentAdapter:
 
 class AnalyzerFactory:
     @staticmethod
-    def create(use_agents: bool = False) -> Any:
+    def create(use_agents: bool = False, skill: str = None) -> Any:
         """
         Creates and returns an analyzer object.
         
@@ -52,6 +64,7 @@ class AnalyzerFactory:
             use_agents: If True, uses the new Multi-Agent pipeline via an adapter.
                         If False, falls back to the legacy Analyzer unless 
                         AGENT_ARCH="multi" is set in the environment.
+            skill: Optional skill/strategy name to use in multi-agent mode.
         """
         if not use_agents:
             env_arch = os.environ.get("AGENT_ARCH", "").lower()
@@ -59,6 +72,6 @@ class AnalyzerFactory:
                 use_agents = True
 
         if use_agents:
-            return MultiAgentAdapter()
+            return MultiAgentAdapter(skill=skill)
         else:
             return Analyzer()

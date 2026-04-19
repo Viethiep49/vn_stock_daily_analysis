@@ -16,6 +16,9 @@ class AgentOpinion(BaseModel):
     """Represents an individual agent's analysis and recommendation."""
     signal: Signal
     confidence: float = Field(ge=0.0, le=1.0)
+    sentiment_score: int = Field(default=50, ge=0, le=100, description="Sentiment score from 0 to 100")
+    operation_advice: str = Field(default="", description="One sentence operation advice")
+    key_points: List[str] = Field(default_factory=list, description="List of key analysis points")
     reasoning: str
     key_levels: Dict[str, float] = Field(default_factory=dict, description="Key price levels: support, resistance, target")
     raw_data: Optional[Dict[str, Any]] = Field(default=None, description="Optional raw data used for analysis")

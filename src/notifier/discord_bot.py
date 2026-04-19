@@ -40,13 +40,54 @@ class DiscordNotifier(BaseNotifier):
         info = report_data.get('info', {})
         quote = report_data.get('quote', {})
         cb = report_data.get('circuit_breaker', {})
-        llm = report_data.get('llm_analysis', 'No analysis')
+        opinion = report_data.get('opinion')
 
-        embed = {
-            "title": f"Báo Cáo Phân Tích Cổ Phiếu: {symbol}",
-            "description": llm[:4000],  # Discord limits
-            "color": 3447003,  # Blue
-            "fields": [
+        if opinion:
+            description = f"**💡 Lời khuyên:** _{opinion.get('operation_advice')}_\n\n"
+            description += f"**📝 Phân tích:**\n{opinion.get('reasoning')[:2000]}"
+            
+            fields = [
+                {
+                    "name": "🏢 Công ty",
+                    "value": f"{info.get('company_name')} | {info.get('industry')}",
+                    "inline": False
+                },
+                {
+                    "name": "💰 Giá Cập Nhật",
+                    "value": f"{quote.get('price'):,.0f} đ",
+                    "inline": True
+                },
+                {
+                    "name": "🎯 Tín Hiệu",
+                    "value": f"{opinion.get('signal')} ({opinion.get('confidence')*100:.0f}%)",
+                    "inline": True
+                },
+                {
+                    "name": "🌡️ Sentiment",
+                    "value": f"{opinion.get('sentiment_score')}/100",
+                    "inline": True
+                }
+            ]
+
+            if opinion.get('key_points'):
+                fields.append({
+                    "name": "📌 Điểm Nhấn",
+                    "value": "\n".join([f"• {p}" for p in opinion.get('key_points')]),
+                    "inline": False
+                })
+
+            levels = opinion.get('key_levels', {})
+            if levels:
+                levels_str = f"HT: {levels.get('support', '-')} | KC: {levels.get('resistance', '-')} | Target: {levels.get('target', '-')}"
+                fields.append({
+                    "name": "📐 Mức Kỹ Thuật",
+                    "value": levels_str,
+                    "inline": False
+                })
+        else:
+            llm = report_data.get('llm_analysis', 'No analysis')
+            description = llm[:4000]
+            fields = [
                 {
                     "name": "🏢 Công ty",
                     "value": f"{info.get('company_name')} | {info.get('industry')}",
@@ -58,6 +99,11 @@ class DiscordNotifier(BaseNotifier):
                     "inline": True
                 }
             ]
+
+        embed = {
+            "title": f"Báo Cáo Phân Tích Cổ Phiếu: {symbol}",
+            "description": description,
+            "fields": fields
         }
 
         if cb and cb.get('warning'):
@@ -67,8 +113,16 @@ class DiscordNotifier(BaseNotifier):
                 "inline": False
             })
             embed["color"] = 15158332  # Red if warning
+        elif opinion:
+            signal = opinion.get('signal', '').upper()
+            if 'BUY' in signal:
+                embed["color"] = 3066993  # Green
+            elif 'SELL' in signal:
+                embed["color"] = 15158332  # Red
+            else:
+                embed["color"] = 16776960  # Yellow/Gold
         else:
-            embed["color"] = 3066993  # Green
+            embed["color"] = 3066993  # Green (Default)
 
         payload = {
             "embeds": [embed]
