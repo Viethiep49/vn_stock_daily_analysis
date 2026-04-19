@@ -33,9 +33,10 @@ sequenceDiagram
 ## Component Roles
 
 ### Core Components
-- **`main.py`**: The CLI entry point. Handles arguments like `--symbol`, `--dry-run`, and `--force-run`.
+- **`main.py`**: The CLI entry point. Handles arguments like `--symbol`, `--dry-run`, and `--agents`.
 - **`app.py`**: The Streamlit-based web dashboard interface.
-- **`src/core/analyzer.py` (`Analyzer`)**: The central orchestrator. It coordinates data fetching, technical calculation, and LLM prompting.
+- **`src/core/analyzer.py` (`Analyzer`)**: The central orchestrator for simple analysis mode.
+- **`src/agents/pipeline.py` (`AgentPipeline`)**: The orchestrator for Multi-Agent mode.
 - **`src/core/llm_client.py` (`LiteLLMClient`)**: Interface for interacting with Large Language Models via `litellm`. It handles model routing and fallbacks.
 
 ### Data & Market Layer
@@ -47,7 +48,8 @@ sequenceDiagram
   - `SectorMapping`: Maps symbols to their respective industry sectors.
 
 ### Analysis & Strategies
-- **`src/strategies/`**: Contains YAML-defined technical strategies. These are used to inject specific reasoning logic into the LLM prompt.
+- **`src/strategies/`**: Contains YAML-defined technical strategies.
+- **`src/agents/`**: Specialized AI agents (Technical, Risk, Decision) that use tools to perform deep-dive analysis in Multi-Agent mode.
 
 ### Distribution
 - **`src/notifier/`**:
@@ -61,6 +63,7 @@ sequenceDiagram
 
 | Directory | Responsibility |
 |-----------|----------------|
+| `src/agents/` | Multi-agent system components and pipeline. |
 | `src/core/` | Main business logic and orchestrators. |
 | `src/data_provider/` | Data retrieval logic and provider abstractions. |
 | `src/market/` | Market rules, sector data, and safety checks. |

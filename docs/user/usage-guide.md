@@ -34,6 +34,12 @@ python main.py --symbol VNM.HO
   python main.py --symbol FPT --force-run
   ```
 
+- **Multi-Agent Analysis**:
+  Run a more comprehensive analysis using a pipeline of specialized agents (Technical, Risk, Decision):
+  ```bash
+  python main.py --symbol FPT --agents
+  ```
+
 ---
 
 ## Web Dashboard (Streamlit)
@@ -44,7 +50,7 @@ A visual dashboard is available for interactive analysis.
 ```bash
 streamlit run app.py
 ```
-This will open a new tab in your web browser where you can enter symbols and see analysis reports visually.
+This will open a new tab in your web browser where you can enter symbols and see analysis reports visually. You can also toggle **"Sử dụng Multi-Agent Analysis"** in the sidebar for more detailed reports.
 
 ---
 
