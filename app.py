@@ -61,29 +61,8 @@ with st.sidebar:
 if analyze_button:
     with st.spinner(f"Đang phân tích mã {symbol_input}..."):
         try:
-            if use_agents:
-                # Use Multi-Agent Pipeline
-                pipeline = AgentPipeline()
-                opinion, context = pipeline.run(symbol_input)
-                
-                result = {
-                    "status": "success",
-                    "symbol": symbol_input,
-                    "info": context.data.get("stock_info", {}),
-                    "quote": context.data.get("realtime_quote", {}),
-                    "tech_summary": "Phân tích bởi Multi-Agent System (Technical + Risk + Decision Agents)",
-                    "llm_analysis": f"### Final Signal: {opinion.signal}\n**Confidence: {opinion.confidence:.2f}**\n\n{opinion.reasoning}"
-                }
-                
-                # Add detailed agent opinions to llm_analysis
-                if context.opinions:
-                    result["llm_analysis"] += "\n\n---\n### Detailed Agent Opinions"
-                    for agent_name, agent_opinion in context.opinions.items():
-                        result["llm_analysis"] += f"\n\n**{agent_name.capitalize()} Agent:**\n- Signal: {agent_opinion.signal}\n- Reasoning: {agent_opinion.reasoning}"
-            else:
-                # Initialize Analyzer (Legacy/Simple)
-                analyzer = Analyzer()
-                result = analyzer.analyze(symbol_input)
+            analyzer = AnalyzerFactory.create(use_agents=use_agents)
+            result = analyzer.analyze(symbol_input)
             
             if result.get("status") == "failed":
                 st.error(f"❌ Lỗi: {result.get('error')}")
@@ -110,6 +89,35 @@ if analyze_button:
                     
                     # Circuit Breaker
                     cb = result.get("circuit_breaker")
+                    if cb and cb.get('warning'):
+                        st.warning(cb.get('warning'))
+                    
+                    st.divider()
+                    st.write(f"📈 **Chỉ số kỹ thuật:**")
+                    st.code(result.get("tech_summary"))
+
+                with col2:
+                    st.subheader("🤖 Phân tích từ AI Agent")
+                    st.markdown(f"""
+                    <div class="report-card">
+                        {result.get("llm_analysis")}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                st.success("✅ Phân tích hoàn tất!")
+                
+        except Exception as e:
+            st.error(f"Đã xảy ra lỗi hệ thống: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+else:
+    # Placeholder state
+    st.info("Vui lòng nhập mã cổ phiếu ở thanh bên trái và nhấn nút 'Bắt đầu phân tích'.")
+
+# Footer
+st.divider()
+st.caption("Powered by vnstock & LiteLLM | Dữ liệu mang tính chất tham khảo.")
+                cb = result.get("circuit_breaker")
                     if cb and cb.get('warning'):
                         st.warning(cb.get('warning'))
                     

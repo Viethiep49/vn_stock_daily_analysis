@@ -10,8 +10,7 @@ if sys.stdout.encoding != 'utf-8':
 if sys.stderr.encoding != 'utf-8':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-from src.core.analyzer import Analyzer
-from src.agents.pipeline import AgentPipeline
+from src.agents.factory import AnalyzerFactory
 from src.notifier.telegram_bot import TelegramNotifier
 from src.notifier.discord_bot import DiscordNotifier
 
@@ -62,23 +61,10 @@ def main():
         #     sys.exit(0)
 
     if args.agents:
-        logger.info(f"Sử dụng AgentPipeline cho mã {args.symbol}...")
-        pipeline = AgentPipeline()
-        opinion, context = pipeline.run(args.symbol)
+        logger.info(f"Sử dụng Multi-Agent Analysis cho mã {args.symbol}...")
         
-        result = {
-            "symbol": args.symbol,
-            "status": "success",
-            "llm_analysis": f"**Signal: {opinion.signal} (Confidence: {opinion.confidence:.2f})**\n\n{opinion.reasoning}",
-            "is_multi_agent": True,
-            "info": context.data.get("stock_info", {}),
-            "quote": context.data.get("realtime_quote", {}),
-            "circuit_breaker": {}, 
-            "tech_summary": "Phân tích bởi Multi-Agent System"
-        }
-    else:
-        analyzer = Analyzer()
-        result = analyzer.analyze(args.symbol)
+    analyzer = AnalyzerFactory.create(use_agents=args.agents)
+    result = analyzer.analyze(args.symbol)
 
     print("\n" + "=" * 50)
     print(f"BÁO CÁO PHÂN TÍCH: {result.get('symbol', args.symbol)}")
