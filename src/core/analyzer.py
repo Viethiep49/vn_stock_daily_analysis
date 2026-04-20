@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Dict, Any, List
 from datetime import datetime
 from src.data_provider.vnstock_provider import VNStockProvider
@@ -12,6 +13,9 @@ from src.scoring.indicators import IndicatorEngine
 from src.scoring.strategy_runner import StrategyRunner
 from src.scoring.aggregator import ScoreAggregator
 from src.scoring.explainer import LLMExplainer
+from src.scoring.risk_metrics import RiskEngine
+from src.scoring.valuation import DCFEngine
+from src.data_provider.macro_provider import FREDMacroProvider
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +37,14 @@ class Analyzer:
         self.strategy_runner = StrategyRunner.load_dir(strategy_dir)
         self.aggregator = ScoreAggregator()
         self.explainer = LLMExplainer(self.llm)
+        self.risk_engine = RiskEngine()
+        self.dcf_engine = DCFEngine()
+        
+        try:
+            self.macro_provider = FREDMacroProvider()
+        except Exception as e:
+            logger.error(f"Failed to initialize FREDMacroProvider: {e}")
+            self.macro_provider = None
 
     def analyze(self, symbol: str) -> Dict[str, Any]:
         """The main analysis pipeline."""
@@ -86,6 +98,25 @@ class Analyzer:
             report.quote = quote
             report.circuit_breaker = cb_status
 
+            # 6.1 Risk Metrics
+            report.risk = self.risk_engine.compute(df)
+
+            # 6.2 Macro Overlay
+            if self.macro_provider and os.getenv("MACRO_OVERLAY_ENABLED", "true").lower() == "true":
+                report.macro = self.macro_provider.get_snapshot()
+
+            # 6.3 DCF Valuation
+            try:
+                bundle = self.router.execute_with_fallback("get_financials_bundle", normalized_symbol, 5)
+                # KBS returns nghìn đồng, but quote.get('price') should already be normalized if we follow main.py logic
+                # Actually, vnstock_provider.get_realtime_quote returns KBS original (nghìn đồng)
+                market_price_vnd = quote.get('price', 0) * 1000
+                valuation = self.dcf_engine.compute(bundle, market_price_vnd, industry=info.get('industry'))
+                report.valuation = valuation
+            except Exception as e:
+                logger.warning(f"DCF failed for {normalized_symbol}: {e}")
+                report.valuation = None
+
             # 7. AI Explanation
             narrative = self.explainer.explain(report)
             report.narrative = narrative
@@ -103,10 +134,6 @@ class Analyzer:
                 "circuit_breaker": cb_status,
                 "indicators": indicators,
             }
-
-        except Exception as e:
-            logger.error(f"Error analyzing {symbol}: {e}")
-            return {"symbol": symbol, "error": str(e), "status": "failed"}
 
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")

@@ -25,6 +25,9 @@ class AnalysisReport:
     info: Optional[dict] = None
     quote: Optional[dict] = None
     circuit_breaker: Optional[dict] = None
+    risk: Optional["RiskMetrics"] = None
+    macro: Optional["MacroSnapshot"] = None
+    valuation: Optional["ValuationResult"] = None
 
 
 class ScoreAggregator:

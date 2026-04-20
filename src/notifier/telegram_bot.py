@@ -53,6 +53,30 @@ class TelegramNotifier(BaseNotifier):
             score_text += "\n*Chi tiết chiến lược:*\n"
             for card in report.cards:
                 score_text += f"- {card.strategy_name}: `{card.score}` | {card.signal.value}\n"
+            
+            # Add Risk Metrics
+            if report.risk and report.risk.risk_grade != "UNKNOWN":
+                risk = report.risk
+                score_text += f"\n📉 *Rủi ro* (`{risk.risk_grade}`):\n"
+                score_text += f"  • Volatility: `{risk.volatility_annual:.1f}%/năm`\n"
+                score_text += f"  • Sharpe: `{risk.sharpe_ratio:.2f}` | Sortino: `{risk.sortino_ratio:.2f}`\n"
+                score_text += f"  • VaR 95% 1D: `{risk.var_95_1d:.2f}%`\n"
+                score_text += f"  • Max DD: `{risk.max_drawdown:.1f}%` | Hiện tại DD: `{risk.current_drawdown:.1f}%`\n"
+
+            # Add DCF Valuation
+            if report.valuation:
+                v = report.valuation
+                if v.intrinsic_value_per_share or v.grade == "SPECULATIVE":
+                    score_text += f"\n💎 *Định giá DCF* (`{v.grade}`):\n"
+                    if v.intrinsic_value_per_share:
+                        score_text += f"  • Intrinsic: `{v.intrinsic_value_per_share:,.0f}đ/cp`\n"
+                        score_text += f"  • Market: `{v.market_price:,.0f}đ/cp`\n"
+                        score_text += f"  • Upside: `{v.upside_pct:+.1f}%` | MoS: `{v.margin_of_safety_pct:.1f}%`\n"
+                        score_text += f"  • FCF base: `{v.fcf_base:,.0f}đ` ({v.fcf_trend})\n"
+                    
+                    if v.notes:
+                        for note in v.notes:
+                            score_text += f"⚠️ {note}\n"
 
         message = f"📊 *VN STOCK REPORT: {symbol}*\n\n"
         message += f"🏢 *Công ty*: {info.get('company_name')} | {info.get('industry')}\n"
@@ -79,6 +103,18 @@ class TelegramNotifier(BaseNotifier):
             message += f"\n📝 *Phân tích*:\n{opinion.get('reasoning')}\n"
         else:
             message += f"\n🤖 *Nhận định AI*:\n{llm}\n"
+
+        # Add Macro Overlay
+        if report and report.macro:
+            m = report.macro
+            message += f"\n🌐 *Macro Overlay* (`{m.regime}`):\n"
+            message += f"  • Fed Funds: `{m.fed_funds_rate:.2f}%` ({m.fed_funds_rate_delta_30d:+.2f} 30D)\n"
+            message += f"  • DXY: `{m.dxy:.2f}` ({m.dxy_delta_30d_pct:+.2f}% 30D)\n"
+            message += f"  • US10Y: `{m.us10y:.2f}%` | Curve 10Y-2Y: `{m.yield_curve_10y_2y:+.2f}`\n"
+            message += f"  • VIX: `{m.vix:.1f}`\n"
+            if m.notes:
+                for note in m.notes:
+                    message += f"⚠️ {note}\n"
 
         message += "\n---"
 
