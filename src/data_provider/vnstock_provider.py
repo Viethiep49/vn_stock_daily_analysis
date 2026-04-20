@@ -156,3 +156,56 @@ class VNStockProvider(BaseDataProvider):
     def get_company_profile(self, symbol: str) -> Dict[str, Any]:
         """Lấy hồ sơ doanh nghiệp"""
         return self.get_stock_info(symbol)
+
+    def get_financials_bundle(self, symbol: str, years: int = 5) -> Dict[str, Any]:
+        """
+        Lấy bộ báo cáo tài chính năm phục vụ định giá DCF.
+        """
+        raw = self._clean_symbol(symbol)
+        bundle = {
+            "income_statement": pd.DataFrame(),
+            "cash_flow": pd.DataFrame(),
+            "balance_sheet": pd.DataFrame(),
+            "ratios": pd.DataFrame(),
+            "shares_outstanding": 0.0,
+            "currency": "VND"
+        }
+
+        try:
+            client = self._get_client(raw)
+
+            # 1. Lấy số lượng cổ phiếu lưu hành từ overview
+            try:
+                ov = client.company.overview()
+                if not ov.empty:
+                    bundle["shares_outstanding"] = float(ov.iloc[0].get('outstanding_shares', 0))
+            except Exception as e:
+                logger.warning(f"Không lấy được shares_outstanding cho {raw}: {e}")
+
+            # 2. Lấy các báo cáo tài chính năm
+            methods = {
+                "income_statement": client.finance.income_statement,
+                "cash_flow": client.finance.cash_flow,
+                "balance_sheet": client.finance.balance_sheet,
+                "ratios": client.finance.ratio
+            }
+
+            for key, method in methods.items():
+                try:
+                    df = method(period='year')
+                    if df is not None and not df.empty:
+                        # Sắp xếp cũ -> mới (vnstock thường trả mới -> cũ)
+                        # vnstock v3 DataFrame thường có cột 'year' và 'quarter'
+                        if 'year' in df.columns:
+                            df = df.sort_values('year').tail(years)
+                        bundle[key] = df
+                        if len(df) < years:
+                            logger.warning(f"{key} của {raw} chỉ có {len(df)} năm dữ liệu (yêu cầu {years})")
+                except Exception as e:
+                    logger.warning(f"Lỗi khi lấy {key} cho {raw}: {e}")
+
+            return bundle
+
+        except Exception as e:
+            logger.error(f"get_financials_bundle lỗi nghiêm trọng cho {raw}: {e}")
+            return bundle

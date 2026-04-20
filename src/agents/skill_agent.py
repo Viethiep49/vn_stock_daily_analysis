@@ -23,8 +23,30 @@ class SkillAgent(BaseAgent):
             self.skill_content = f"Error loading skill '{skill_name}'."
 
     def system_prompt(self, context: AgentContext) -> str:
+        valuation_info = ""
+        if self.skill_name in ["BUFFETT", "GRAHAM", "LYNCH"]:
+            # Inject DCF valuation if available (from Prompt 04)
+            report = context.metadata.get('report')
+            valuation = getattr(report, 'valuation', None) if report else context.metadata.get('valuation')
+            
+            if valuation:
+                grade = getattr(valuation, 'grade', 'N/A')
+                intrinsic = getattr(valuation, 'intrinsic_value_per_share', 0)
+                upside = getattr(valuation, 'upside_pct', 0)
+                notes = getattr(valuation, 'notes', [])
+                notes_str = "; ".join(notes) if isinstance(notes, list) else str(notes)
+                
+                valuation_info = (
+                    "### DCF VALUATION DATA ###\n"
+                    f"Valuation Grade: {grade}\n"
+                    f"Intrinsic Value: {intrinsic:,.0f} VND\n"
+                    f"Upside: {upside:+.2f}%\n"
+                    f"Notes: {notes_str}\n\n"
+                )
+
         return (
             f"You are an expert financial analyst specializing in the {self.skill_name} methodology.\n\n"
+            f"{valuation_info}"
             "### YOUR SPECIALIZED PLAYBOOK ###\n"
             f"{self.skill_content}\n\n"
             "### TASK ###\n"

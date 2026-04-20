@@ -17,3 +17,4 @@ python-telegram-bot>=20.0
 discord.py>=2.3.0
 asteval>=0.9.31
 pandas-ta-classic>=0.4.47
+sse-starlette>=0.16.5

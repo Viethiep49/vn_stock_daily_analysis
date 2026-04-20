@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-background: #0a0a0b;
+  --color-foreground: #fafafa;
+  
+  --color-card: #141416;
+  --color-card-foreground: #fafafa;
+  
+  --color-popover: #0a0a0b;
+  --color-popover-foreground: #fafafa;
+  
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  
+  --color-secondary: #27272a;
+  --color-secondary-foreground: #fafafa;
+  
+  --color-muted: #27272a;
+  --color-muted-foreground: #a1a1aa;
+  
+  --color-accent: #27272a;
+  --color-accent-foreground: #fafafa;
+  
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+  
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  
+  --color-border: #27272a;
+  --color-input: #27272a;
+  --color-ring: #3b82f6;
+
+  --radius-lg: 0.75rem;
+  --radius-md: calc(0.75rem - 2px);
+  --radius-sm: calc(0.75rem - 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+.glass-panel {
+  @apply bg-card/60 backdrop-blur-xl border border-white/5;
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400;
+}
+
+.signal-buy {
+  @apply text-emerald-500 bg-emerald-500/10 border-emerald-500/20;
+}
+
+.signal-sell {
+  @apply text-red-500 bg-red-500/10 border-red-500/20;
+}
+
+.signal-hold {
+  @apply text-amber-500 bg-amber-500/10 border-amber-500/20;
+}

@@ -11,7 +11,7 @@ class LLMExplainer:
     def __init__(self, llm_client: Optional[LiteLLMClient] = None):
         self.llm = llm_client or LiteLLMClient()
 
-    def explain(self, report: AnalysisReport) -> str:
+    def explain(self, report: AnalysisReport, model: Optional[str] = None) -> str:
         """Construct prompt from ScoreCards and generate narrative."""
         # 1. Prepare data summary
         cards_text = ""
@@ -43,7 +43,7 @@ Constraint: DO NOT change the scores or the final signal. Your job is to EXPLAIN
 """
         logger.info(f"Generating narrative for {report.symbol}...")
         try:
-            narrative = self.llm.generate(prompt)
+            narrative = self.llm.generate(prompt, model=model)
             return narrative
         except Exception as e:
             logger.error(f"LLM generation failed: {e}")

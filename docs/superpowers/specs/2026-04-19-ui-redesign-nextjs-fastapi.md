@@ -18,7 +18,7 @@ Replace the Streamlit dashboard with a professional, production-grade web app us
 |---|---|
 | Frontend | Next.js 14 (App Router), TypeScript |
 | UI Components | Tailwind CSS + shadcn/ui |
-| Charts | Recharts |
+| Charts | Recharts (chart type guided by ui-ux-pro-max) |
 | Backend | FastAPI (Python) |
 | LLM Streaming | Server-Sent Events (SSE) |
 | Deploy (FE) | Vercel |
@@ -75,12 +75,9 @@ The `AnalyzerFactory` from `src/agents/factory.py` is reused directly.
 - `components/TechGrid` — card grid cho các chỉ số kỹ thuật
 - `components/Sidebar` — stock input, model picker, multi-agent toggle, analyze button
 
-### Color scheme
+### Design System
 
-- Nền trắng sạch (`#FFFFFF`, `#F9FAFB`)
-- Accent xanh lá tài chính: `#00C853`
-- BUY: `#00C853`, SELL: `#FF3D00`, HOLD: `#FFB300`
-- Circuit breaker warning: badge đỏ nổi bật
+All color palette, typography, component style, and chart type decisions are derived by querying the **ui-ux-pro-max** design reference tool (`.agent/.shared/ui-ux-pro-max/`) before implementation. This ensures consistent, production-grade design choices rather than ad-hoc picks.
 
 ## Data Flow
 

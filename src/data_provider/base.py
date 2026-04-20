@@ -34,3 +34,19 @@ class BaseDataProvider(ABC):
     def get_company_profile(self, symbol: str) -> Dict[str, Any]:
         """Lấy hồ sơ doanh nghiệp"""
         pass
+
+    @abstractmethod
+    def get_financials_bundle(self, symbol: str, years: int = 5) -> Dict[str, Any]:
+        """
+        Trả dict chứa:
+        {
+            "income_statement": DataFrame (năm),
+            "cash_flow": DataFrame (năm),
+            "balance_sheet": DataFrame (năm),
+            "ratios": DataFrame (năm),    # ROE, ROA, debt/equity, ...
+            "shares_outstanding": float,
+            "currency": "VND"
+        }
+        Ít nhất `years` năm gần nhất, sắp xếp cũ → mới.
+        """
+        pass
