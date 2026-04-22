@@ -1,5 +1,6 @@
 import logging
 import time
+import os
 import pandas as pd
 from dataclasses import dataclass, field
 from typing import List, Callable, Optional, Dict, Any
@@ -10,10 +11,9 @@ from datetime import datetime, timedelta
 from src.screener.universe import UniverseLoader, UniverseItem
 from src.scoring.indicators import IndicatorEngine
 from src.scoring.strategy_runner import StrategyRunner
-from src.scoring.aggregator import ScoreAggregator, AnalysisReport
+from src.scoring.aggregator import ScoreAggregator
 from src.scoring.risk_metrics import RiskEngine
 from src.scoring.valuation import DCFEngine
-from src.scoring.fundamental import calculate_f_score
 
 logger = logging.getLogger(__name__)
 

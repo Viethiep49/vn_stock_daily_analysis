@@ -1,5 +1,5 @@
 """Filter primitives for stock screening."""
-from typing import Callable, Any, Tuple
+from typing import Callable, Tuple
 
 def min_market_cap(bn_vnd: float) -> Callable[[dict], bool]:
     return lambda r: (r.get("market_cap_bn") or 0) >= bn_vnd

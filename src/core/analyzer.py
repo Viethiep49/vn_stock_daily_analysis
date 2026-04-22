@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime
 from src.data_provider.vnstock_provider import VNStockProvider
 from src.data_provider.fallback_router import FallbackRouter

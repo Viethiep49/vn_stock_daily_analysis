@@ -1,7 +1,7 @@
 import unittest
 import pandas as pd
 import numpy as np
-from src.scoring.risk_metrics import RiskEngine, RiskMetrics
+from src.scoring.risk_metrics import RiskEngine
 
 class TestRiskMetrics(unittest.TestCase):
     def setUp(self):

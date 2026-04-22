@@ -3,14 +3,11 @@ Vectorized walk-forward backtest engine.
 """
 import math
 from dataclasses import dataclass
-from datetime import date
 from typing import List, Optional, Any
 import pandas as pd
-import numpy as np
 from src.scoring.indicators import IndicatorEngine
 from src.scoring.strategy_runner import StrategyRunner
 from src.scoring.aggregator import ScoreAggregator
-from src.scoring.signals import Signal
 
 
 @dataclass
@@ -69,7 +66,7 @@ class BacktestEngine:
         # 1. Load data. Fetch extra for warmup.
         # Ideally we need 200 sessions before 'start'
         start_date = pd.to_datetime(config.start)
-        end_date = pd.to_datetime(config.end)
+        pd.to_datetime(config.end)
         
         # Approximate 1 year earlier for warmup
         warmup_start = (start_date - pd.Timedelta(days=365)).strftime("%Y-%m-%d")

@@ -1,7 +1,6 @@
 """
 tests/test_validator.py — Unit tests cho VNStockValidator
 """
-import pytest
 from src.utils.validator import VNStockValidator
 
 

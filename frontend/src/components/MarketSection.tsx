@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 
 // --- Animated Area Chart ---
-function AreaChart({ data, color }: { data: { t: string; v: number }[]; color: string }) {
+function AreaChart({ data }: { data: { t: string; v: number }[] }) {
   const width = 600;
   const height = 160;
   const padding = { top: 10, right: 10, bottom: 30, left: 50 };
@@ -122,7 +122,7 @@ function AreaChart({ data, color }: { data: { t: string; v: number }[]; color: s
 }
 
 // --- Scorecard Row ---
-function ScorecardRow({ name, score, signal, reason }: { name: string; score: number; signal: string; reason: string }) {
+function ScorecardRow({ name, score, signal }: { name: string; score: number; signal: string }) {
   const signalClass =
     signal === "BUY" ? "signal-buy" : signal === "SELL" ? "signal-sell" : "signal-hold";
 
@@ -232,14 +232,11 @@ const DEMO_STOCKS = [
 
 export default function MarketSection() {
   const [activeStock, setActiveStock] = useState(0);
-  const [chartData, setChartData] = useState<{ t: string; v: number }[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
 
   const stock = DEMO_STOCKS[activeStock];
 
-  useEffect(() => {
-    setChartData(generateChartData(stock.symbol, stock.price));
-  }, [activeStock]);
+  const chartData = useMemo(() => generateChartData(stock.symbol, stock.price), [stock.symbol, stock.price]);
 
   const handleAnalyze = () => {
     setAnalyzing(true);
@@ -332,7 +329,7 @@ export default function MarketSection() {
 
           {/* Chart */}
           <div className="glass-card-blue p-4 rounded-xl">
-            {chartData.length > 0 && <AreaChart data={chartData} color="#10B981" />}
+            {chartData.length > 0 && <AreaChart data={chartData} />}
           </div>
 
           {/* Scorecard */}

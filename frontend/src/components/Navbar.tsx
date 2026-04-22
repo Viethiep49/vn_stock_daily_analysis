@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -23,7 +24,7 @@ export default function Navbar() {
         aria-label="Main navigation"
       >
         {/* Logo */}
-        <a
+        <Link
           href="/"
           className="flex items-center gap-2.5 cursor-pointer"
           aria-label="VN Stock AI Homepage"
@@ -44,7 +45,7 @@ export default function Navbar() {
             <span className="gradient-text-gold">VN</span>
             <span className="text-white"> Stock Personal</span>
           </span>
-        </a>
+        </Link>
 
         {/* Status Indicator */}
         <div className="flex items-center gap-3">

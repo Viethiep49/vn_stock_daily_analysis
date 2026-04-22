@@ -115,7 +115,8 @@ class DiscordNotifier(BaseNotifier):
                         )
                     
                     if v.notes:
-                        if val_value: val_value += "\n"
+                        if val_value:
+                            val_value += "\n"
                         val_value += "\n".join([f"⚠️ {note}" for note in v.notes])
                         
                     valuation_field = {

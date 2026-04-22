@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from src.agents.factory import AnalyzerFactory
 from dotenv import load_dotenv
-import os
 
 # Load environment variables
 load_dotenv(override=True)
@@ -109,14 +108,14 @@ if analyze_button:
                         st.warning(cb.get('warning'))
                     
                     st.divider()
-                    st.write(f"📈 **Chỉ số kỹ thuật:**")
+                    st.write("📈 **Chỉ số kỹ thuật:**")
                     st.code(result.get("tech_summary"))
                     
                     # Scoring Breakdown if available
                     report = result.get("report")
                     if report:
                         st.divider()
-                        st.write(f"⭐ **Điểm số & Tín hiệu:**")
+                        st.write("⭐ **Điểm số & Tín hiệu:**")
                         st.subheader(f"{report.composite:.1f}/100 - {report.final_signal.value}")
                         
                         df_cards = pd.DataFrame([

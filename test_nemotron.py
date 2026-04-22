@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-import litellm
 import sys
 
 # Load cấu hình từ .env

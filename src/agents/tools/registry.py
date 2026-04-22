@@ -39,11 +39,11 @@ class ToolRegistry:
         for param_name, param in sig.parameters.items():
             param_info = {"type": "string"} # Default to string
             # Basic type mapping
-            if param.annotation == int:
+            if param.annotation is int:
                 param_info["type"] = "integer"
-            elif param.annotation == float:
+            elif param.annotation is float:
                 param_info["type"] = "number"
-            elif param.annotation == bool:
+            elif param.annotation is bool:
                 param_info["type"] = "boolean"
                 
             parameters["properties"][param_name] = param_info

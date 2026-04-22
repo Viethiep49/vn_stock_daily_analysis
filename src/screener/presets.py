@@ -2,7 +2,6 @@
 from src.screener.filters import (
     min_market_cap,
     min_liquidity,
-    fscore_at_least,
     composite_score_at_least,
     rsi_in_range,
     price_above_ma,

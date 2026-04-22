@@ -1,7 +1,9 @@
 """Unit tests for StrategyRunner schema, rule evaluator, and load_dir."""
 import pytest
 from pydantic import ValidationError
-from src.scoring.strategy_runner import StrategyConfig
+from src.scoring.strategy_runner import StrategyConfig, RuleEvaluator, StrategyRunner
+from src.scoring.aggregator import ScoreCard
+from src.scoring.signals import Signal
 
 
 VALID_YAML = {
@@ -76,7 +78,6 @@ class TestStrategyConfigSchema:
             StrategyConfig(**bad)
 
 
-from src.scoring.strategy_runner import RuleEvaluator
 
 
 class TestRuleEvaluator:
@@ -110,9 +111,6 @@ class TestRuleEvaluator:
             self.ev.eval("open('/etc/passwd').read()", {})
 
 
-from src.scoring.strategy_runner import StrategyRunner
-from src.scoring.aggregator import ScoreCard
-from src.scoring.signals import Signal
 
 
 def _make_indicator_ctx(**overrides):

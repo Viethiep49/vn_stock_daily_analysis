@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 from src.scoring.technical import calculate_technical_score
 
 def test_calculate_technical_score_uptrend():

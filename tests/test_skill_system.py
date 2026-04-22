@@ -1,5 +1,4 @@
 import pytest
-import os
 from src.agents.skills.registry import list_skills, get_skill_content
 from src.agents.skill_agent import SkillAgent
 from src.agents.protocols import AgentContext

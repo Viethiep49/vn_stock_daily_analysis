@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Any, List, Optional
+from typing import Any, Optional
 from litellm import completion
 
 logger = logging.getLogger(__name__)

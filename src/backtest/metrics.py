@@ -2,8 +2,11 @@
 Backtest metrics calculation.
 """
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 import numpy as np
-import pandas as pd
+
+if TYPE_CHECKING:
+    from src.backtest.engine import BacktestResult
 
 
 @dataclass

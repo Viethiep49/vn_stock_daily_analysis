@@ -57,7 +57,8 @@ class MultiAgentAdapter:
                     report.append(f"- Tín hiệu: {agent_opinion.signal.value if hasattr(agent_opinion.signal, 'value') else str(agent_opinion.signal)}")
                     # Truncate reasoning for summary
                     reason = agent_opinion.reasoning
-                    if len(reason) > 200: reason = reason[:200] + "..."
+                    if len(reason) > 200:
+                        reason = reason[:200] + "..."
                     report.append(f"- Nhận định: {reason}")
 
             llm_analysis = "\n".join(report)

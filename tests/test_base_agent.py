@@ -1,9 +1,8 @@
 import pytest
-from unittest.mock import MagicMock, patch
-import json
+from unittest.mock import MagicMock
 
 from src.agents.base_agent import BaseAgent
-from src.agents.protocols import AgentContext, AgentOpinion, Signal
+from src.agents.protocols import AgentContext, Signal
 
 class MockAgent(BaseAgent):
     def system_prompt(self, context: AgentContext) -> str:

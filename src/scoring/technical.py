@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 
 def calculate_technical_score(df: pd.DataFrame) -> dict:
     """

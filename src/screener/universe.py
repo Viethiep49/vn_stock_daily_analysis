@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
-from datetime import datetime, date
+from datetime import date
 
 logger = logging.getLogger(__name__)
 

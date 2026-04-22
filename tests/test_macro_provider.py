@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import pandas as pd
-from src.data_provider.macro_provider import FREDMacroProvider, MacroSnapshot
+from src.data_provider.macro_provider import FREDMacroProvider
 
 class TestFREDMacroProvider(unittest.TestCase):
     def setUp(self):

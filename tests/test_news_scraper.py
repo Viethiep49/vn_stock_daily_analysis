@@ -1,4 +1,3 @@
-import pytest
 from src.news.vn_news_scraper import get_stock_news
 
 def test_get_stock_news_returns_list():

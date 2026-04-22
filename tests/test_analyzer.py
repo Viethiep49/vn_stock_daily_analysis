@@ -67,6 +67,29 @@ def analyzer_with_mocks(mock_df, mock_quote, mock_info):
         ScoreCard("Test", 60, Signal.NEUTRAL, "test", 1.0, 0)
     ]
 
+    mock_indicators = MagicMock()
+    mock_indicators.close = 61.0
+    mock_indicators.prev_close = 61.0
+    mock_indicators.MA5 = 61.0
+    mock_indicators.MA10 = 61.0
+    mock_indicators.MA20 = 61.0
+    mock_indicators.MA50 = 61.0
+    mock_indicators.MA200 = 61.0
+    mock_indicators.RSI14 = 50.0
+    mock_indicators.MACD = 0.0
+    mock_indicators.MACD_hist = 0.0
+    mock_indicators.BB_lower = 60.0
+    mock_indicators.BB_mid = 61.0
+    mock_indicators.BB_upper = 62.0
+    mock_indicators.ATR14 = 1.0
+    mock_indicators.volume_ratio = 1.0
+    mock_indicators.support_20 = 60.0
+    mock_indicators.resistance_20 = 62.0
+
+    mock_engine = MagicMock()
+    mock_engine.compute.return_value = mock_indicators
+    analyzer.indicator_engine = mock_engine
+
     analyzer.router = mock_router
     analyzer.llm = mock_llm
     # Wire up explainer with the mock llm

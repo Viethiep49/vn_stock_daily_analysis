@@ -117,10 +117,14 @@ class DCFEngine:
             
             variation = (max(last_3_fcf) - min(last_3_fcf)) / abs(fcf_base) if fcf_base != 0 else 0
             
-            if is_growing: result.fcf_trend = "GROWING"
-            elif is_declining: result.fcf_trend = "DECLINING"
-            elif variation < 0.2: result.fcf_trend = "STABLE"
-            else: result.fcf_trend = "VOLATILE"
+            if is_growing:
+                result.fcf_trend = "GROWING"
+            elif is_declining:
+                result.fcf_trend = "DECLINING"
+            elif variation < 0.2:
+                result.fcf_trend = "STABLE"
+            else:
+                result.fcf_trend = "VOLATILE"
         
         if any(f < 0 for f in last_3_fcf):
             result.notes.append("Cảnh báo: Có năm FCF bị âm trong giai đoạn gần đây.")

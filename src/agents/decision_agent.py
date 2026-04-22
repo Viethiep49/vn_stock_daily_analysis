@@ -1,6 +1,5 @@
-from typing import List, Dict, Any, Optional
 from src.agents.base_agent import BaseAgent
-from src.agents.protocols import AgentContext, AgentOpinion
+from src.agents.protocols import AgentContext
 from src.agents.tools.registry import ToolRegistry
 
 class DecisionAgent(BaseAgent):

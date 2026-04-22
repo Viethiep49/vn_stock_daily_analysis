@@ -33,7 +33,6 @@ def test_parse_json_with_trailing_comma():
     assert result == {"key": "value", "list": [1, 2, 3]}
 
 def test_parse_json_with_unescaped_quotes():
-    text = '{"message": "The word \\"hello\\" was said"}'
     # We will test a case where quotes are between word characters, e.g., 'hello"world'
     text_invalid = '{"message": "hello"world"}'
     result = parse_json_robustly(text_invalid)

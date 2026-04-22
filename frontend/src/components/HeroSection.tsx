@@ -6,11 +6,9 @@ import { useEffect, useRef, useState } from "react";
 function SparklineChart({
   data,
   color,
-  fill,
 }: {
   data: number[];
   color: string;
-  fill: string;
 }) {
   const width = 120;
   const height = 40;
@@ -59,6 +57,7 @@ function AnimatedPrice({ target, prefix = "", suffix = "" }: { target: number; p
       else setValue(current);
     }, 30);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
   return (
     <span>{prefix}{value.toLocaleString("vi-VN", { maximumFractionDigits: 0 })}{suffix}</span>
@@ -110,7 +109,7 @@ export default function HeroSection() {
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       setLivePrices((prev) =>
-        prev.map((p, i) => {
+        prev.map((p) => {
           const delta = (Math.random() - 0.49) * p * 0.002;
           return Math.round(p + delta);
         })
@@ -251,7 +250,7 @@ export default function HeroSection() {
                   </div>
                 </div>
                 <div className="w-32 h-12">
-                  <SparklineChart data={ticker.data} color={ticker.color} fill={`${ticker.color}20`} />
+                  <SparklineChart data={ticker.data} color={ticker.color} />
                 </div>
               </div>
 

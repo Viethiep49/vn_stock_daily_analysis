@@ -85,7 +85,7 @@ def main():
     info = result.get("info", {})
     quote = result.get("quote", {})
     cb = result.get("circuit_breaker", {})
-    tech = result.get("tech_summary", "")
+    result.get("tech_summary", "")
 
     # vnstock KBS trả giá theo nghìn đồng → nhân 1000 để hiển thị đúng
     price_vnd = quote.get('price', 0) * 1000

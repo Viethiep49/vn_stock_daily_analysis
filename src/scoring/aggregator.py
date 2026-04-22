@@ -1,7 +1,15 @@
 """Aggregation of per-strategy ScoreCards into a composite AnalysisReport."""
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from src.scoring.signals import Signal, composite_to_signal
+
+if TYPE_CHECKING:
+    from src.scoring.risk_metrics import RiskMetrics
+    from src.scoring.valuation import ValuationResult
+    
+    # We might need MacroSnapshot too. Let's just define a dummy or import it.
+    class MacroSnapshot:
+        pass
 
 
 @dataclass

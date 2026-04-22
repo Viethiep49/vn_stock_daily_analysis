@@ -1,6 +1,5 @@
 from src.agents import Signal, AgentOpinion, AgentContext
 import pydantic
-import pytest
 
 def test_signal_enum():
     assert Signal.BUY == "BUY"

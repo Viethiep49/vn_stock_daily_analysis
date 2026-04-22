@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from datetime import datetime
 from src.agents.protocols import StageResult
 

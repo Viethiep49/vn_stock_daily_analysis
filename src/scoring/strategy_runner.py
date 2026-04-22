@@ -1,7 +1,13 @@
 """YAML-driven strategy definition + safe rule evaluation."""
+import os
+import glob
+import yaml
 from typing import List, Optional
+from dataclasses import asdict, is_dataclass
 from pydantic import BaseModel, Field, field_validator, model_validator
+from asteval import Interpreter
 from src.scoring.signals import Signal
+from src.scoring.aggregator import ScoreCard
 
 
 class RuleConfig(BaseModel):
@@ -41,7 +47,6 @@ class StrategyConfig(BaseModel):
         return rules
 
 
-from asteval import Interpreter
 
 
 class RuleEvaluator:
@@ -82,12 +87,6 @@ class RuleEvaluator:
             raise ValueError(f"Eval error for {expr!r}: {msg}")
 
         return bool(result)
-
-import os
-import glob
-import yaml
-from dataclasses import asdict, is_dataclass
-from src.scoring.aggregator import ScoreCard
 
 
 class StrategyRunner:

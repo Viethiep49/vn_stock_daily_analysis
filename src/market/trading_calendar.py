@@ -1,5 +1,4 @@
 import datetime
-from typing import List, Tuple
 
 # Lịch nghỉ lễ Việt Nam năm 2026 (định dạng: YYYY-MM-DD)
 # Dựa trên lịch nghỉ chính thức của Chính phủ

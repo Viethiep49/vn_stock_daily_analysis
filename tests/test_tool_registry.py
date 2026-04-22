@@ -1,4 +1,3 @@
-import pytest
 from src.agents.tools.registry import ToolRegistry
 
 def test_register_and_execute():

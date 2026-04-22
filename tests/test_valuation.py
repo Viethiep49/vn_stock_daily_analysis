@@ -1,6 +1,5 @@
-import pytest
 import pandas as pd
-from src.scoring.valuation import DCFEngine, DCFAssumptions, ValuationResult
+from src.scoring.valuation import DCFEngine, DCFAssumptions
 
 def test_dcf_undervalued():
     # Setup bundle with growing FCF

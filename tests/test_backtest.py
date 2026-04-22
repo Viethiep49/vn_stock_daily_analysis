@@ -1,7 +1,6 @@
 import pytest
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 from src.backtest.engine import BacktestEngine, BacktestConfig
 from src.backtest.metrics import BacktestMetrics
 from src.scoring.indicators import IndicatorEngine

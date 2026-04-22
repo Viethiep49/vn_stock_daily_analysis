@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from src.agents.pipeline import AgentPipeline
-from src.agents.protocols import AgentOpinion, Signal, AgentContext
+from src.agents.protocols import AgentOpinion, Signal
 
 @pytest.fixture
 def mock_llm_client():

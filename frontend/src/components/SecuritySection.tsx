@@ -52,7 +52,7 @@ const SECURITY_FEATURES = [
       </svg>
     ),
     badge: "TLS/E2E",
-    badgeColor: "#8B5CF6",
+    badgeColor: "#10B981",
   },
 ];
 
@@ -127,7 +127,7 @@ export default function SecuritySection() {
               const x = 50 + 42 * Math.cos(rad);
               const y = 50 + 42 * Math.sin(rad);
               const labels = ["SSL", "E2E", "Zero-Trust", "Local"];
-              const colors = ["#F59E0B", "#10B981", "#3B82F6", "#8B5CF6"];
+              const colors = ["#F59E0B", "#10B981", "#3B82F6", "#10B981"];
               return (
                 <div
                   key={deg}

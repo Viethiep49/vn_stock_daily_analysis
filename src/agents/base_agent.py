@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
-import json
+from typing import Optional
 import logging
-from datetime import date, datetime
 
 from src.core.llm_client import LiteLLMClient
 from src.agents.protocols import AgentContext, AgentOpinion, Signal

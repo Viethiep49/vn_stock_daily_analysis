@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from unittest.mock import MagicMock
 from src.screener.engine import ScreenerEngine, ScreenerConfig, ScreenerResult

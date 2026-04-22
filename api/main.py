@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
 import asyncio
-import json
 import os
 import sys
 
@@ -39,7 +38,8 @@ async def get_history(symbol: str, days: int = 100):
     try:
         end_date = datetime.today().strftime('%Y-%m-%d')
         start_date = (datetime.today() - timedelta(days=days)).strftime('%Y-%m-%d')
-        df = data_provider.get_historical_data(symbol, start=start_date, end=end_date)
+        loop = asyncio.get_running_loop()
+        df = await loop.run_in_executor(None, data_provider.get_historical_data, symbol, start_date, end_date)
         
         if df.empty:
             return []
@@ -71,7 +71,8 @@ async def analyze(request: Request):
         skill = data.get("skill")
         
         analyzer = AnalyzerFactory.create(use_agents=use_agents, skill=skill)
-        result = analyzer.analyze(symbol)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, analyzer.analyze, symbol)
         
         if result.get("status") == "success":
             quote = result.get("quote", {})

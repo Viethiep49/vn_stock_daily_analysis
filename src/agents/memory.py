@@ -1,9 +1,7 @@
 import sqlite3
 import json
-import time
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 from pathlib import Path
 
 from src.agents.protocols import Signal, AgentOpinion
@@ -70,7 +68,7 @@ class AgentMemory:
                     item = dict(row)
                     try:
                         item['opinion'] = json.loads(item['opinion'])
-                    except:
+                    except Exception:
                         pass
                     history.append(item)
                 return history

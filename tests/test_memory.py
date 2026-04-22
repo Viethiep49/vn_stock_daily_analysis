@@ -1,5 +1,3 @@
-import pytest
-import os
 from pathlib import Path
 from src.agents.memory import AgentMemory
 from src.agents.protocols import Signal, AgentOpinion

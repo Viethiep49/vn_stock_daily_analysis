@@ -33,16 +33,25 @@ def analyze_package_json(root: Path) -> Dict[str, Any]:
         all_deps = {**deps, **dev_deps}
         
         stack = []
-        if "next" in all_deps: stack.append("Next.js")
-        elif "react" in all_deps: stack.append("React")
-        elif "vue" in all_deps: stack.append("Vue")
-        elif "svelte" in all_deps: stack.append("Svelte")
-        elif "express" in all_deps: stack.append("Express")
-        elif "nestjs" in all_deps or "@nestjs/core" in all_deps: stack.append("NestJS")
+        if "next" in all_deps:
+            stack.append("Next.js")
+        elif "react" in all_deps:
+            stack.append("React")
+        elif "vue" in all_deps:
+            stack.append("Vue")
+        elif "svelte" in all_deps:
+            stack.append("Svelte")
+        elif "express" in all_deps:
+            stack.append("Express")
+        elif "nestjs" in all_deps or "@nestjs/core" in all_deps:
+            stack.append("NestJS")
         
-        if "tailwindcss" in all_deps: stack.append("Tailwind CSS")
-        if "prisma" in all_deps: stack.append("Prisma")
-        if "typescript" in all_deps: stack.append("TypeScript")
+        if "tailwindcss" in all_deps:
+            stack.append("Tailwind CSS")
+        if "prisma" in all_deps:
+            stack.append("Prisma")
+        if "typescript" in all_deps:
+            stack.append("TypeScript")
         
         return {
             "name": data.get("name", "unnamed"),
@@ -88,7 +97,7 @@ def print_status(root: Path):
     print(f"\n📁 Project: {info.get('name', root.name)}")
     print(f"📂 Path: {root}")
     print(f"🏷️  Type: {', '.join(info.get('stack', ['Generic']))}")
-    print(f"📊 Status: Active")
+    print("📊 Status: Active")
     
     print("\n🔧 Tech Stack:")
     for tech in info.get('stack', []):

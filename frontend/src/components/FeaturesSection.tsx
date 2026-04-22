@@ -48,7 +48,7 @@ const FEATURES = [
     ),
     title: "Cảnh Báo Thông Minh",
     description: "Tín hiệu Buy/Sell/Hold tự động gửi qua Telegram và Discord với phân tích chi tiết từ AI.",
-    color: "#8B5CF6",
+    color: "#10B981",
     stats: "Telegram + Discord",
   },
   {
