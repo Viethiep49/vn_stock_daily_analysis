@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from pydantic import BaseModel, Field
 
 
@@ -15,13 +15,14 @@ class Signal(str, Enum):
 class AgentOpinion(BaseModel):
     """Represents an individual agent's analysis and recommendation."""
     signal: Signal
-    confidence: float = Field(ge=0.0, le=1.0)
-    sentiment_score: int = Field(default=50, ge=0, le=100, description="Sentiment score from 0 to 100")
-    operation_advice: str = Field(default="", description="One sentence operation advice")
-    key_points: List[str] = Field(default_factory=list, description="List of key analysis points")
-    reasoning: str
-    key_levels: Dict[str, float] = Field(default_factory=dict, description="Key price levels: support, resistance, target")
-    raw_data: Optional[Dict[str, Any]] = Field(default=None, description="Optional raw data used for analysis")
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    sentiment_score: int = Field(default=50, ge=0, le=100)
+    operation_advice: str = Field(default="")
+    key_points: List[str] = Field(default_factory=list)
+    reasoning: str = Field(default="")
+    # Use Any to bypass strict validation of nested levels (like lists vs floats)
+    key_levels: Any = Field(default_factory=dict)
+    raw_data: Optional[Dict[str, Any]] = Field(default=None)
 
 
 class AgentRunStats(BaseModel):
@@ -42,7 +43,7 @@ class StageResult(BaseModel):
 class AgentContext(BaseModel):
     """Shared context passed between agents in the multi-agent system."""
     symbol: str
-    data: Dict[str, Any] = Field(default_factory=dict, description="Pre-fetched data like quote, history")
-    opinions: Dict[str, AgentOpinion] = Field(default_factory=dict, description="Results from previous agents (agent_name -> AgentOpinion)")
-    risk_flags: List[str] = Field(default_factory=list, description="List of identified risk flags")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    data: Dict[str, Any] = Field(default_factory=dict)
+    opinions: Dict[str, AgentOpinion] = Field(default_factory=dict)
+    risk_flags: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)

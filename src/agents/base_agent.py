@@ -82,6 +82,24 @@ class BaseAgent(ABC):
                         data["signal"] = Signal(data["signal"].upper())
                     except ValueError:
                         data["signal"] = Signal.HOLD
+                        
+            # Robust confidence parsing
+            if "confidence" in data:
+                conf = data["confidence"]
+                if isinstance(conf, str):
+                    conf = conf.lower().strip()
+                    if conf in ["high", "strong"]:
+                        data["confidence"] = 0.8
+                    elif conf in ["medium", "moderate"]:
+                        data["confidence"] = 0.5
+                    elif conf in ["low", "weak"]:
+                        data["confidence"] = 0.2
+                    else:
+                        try:
+                            data["confidence"] = float(conf)
+                        except ValueError:
+                            data["confidence"] = 0.5
+            
             return AgentOpinion(**data)
         except Exception as e:
             logger.warning(f"Failed to parse AgentOpinion from content: {e}")

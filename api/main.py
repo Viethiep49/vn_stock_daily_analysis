@@ -75,35 +75,63 @@ async def analyze(request: Request):
         
         if result.get("status") == "success":
             quote = result.get("quote", {})
-            # Rename quote keys for frontend
+            
+            # Ensure last_price is in units of 1 (VND) if it looks like units of 1000
+            # VNM 26.25 -> 26250
+            if "price" in quote:
+                price = quote.get("price", 0)
+                if price < 1000: # Heuristic for units of 1000
+                    quote["last_price"] = price * 1000
+                else:
+                    quote["last_price"] = price
+            elif "last_price" in quote:
+                price = quote.get("last_price", 0)
+                if price < 1000:
+                    quote["last_price"] = price * 1000
+            
             if "change_pct" in quote:
                 quote["percent_change"] = quote.pop("change_pct")
-            if "price" in quote:
-                quote["last_price"] = quote.pop("price")
 
-            report = result.get("report", {})
-            indicators = result.get("indicators", {})
+            # Preserve the existing opinion object if MultiAgentAdapter already built it
+            if "opinion" in result and isinstance(result["opinion"], dict):
+                opinion = result["opinion"]
+                # Ensure key_levels keys match frontend expectation (resistance_1 vs resistance)
+                kl = opinion.get("key_levels", {})
+                if isinstance(kl, dict):
+                    # Scale to 1000 if needed
+                    for k, v in kl.items():
+                        if isinstance(v, (int, float)) and v < 1000 and v > 0:
+                            kl[k] = v * 1000
+                        elif isinstance(v, list):
+                            kl[k] = [x * 1000 if (isinstance(x, (int, float)) and x < 1000 and x > 0) else x for x in v]
 
-            # Build opinion object from report + indicators
-            cards = report.get("cards", []) if isinstance(report, dict) else []
-            ind = indicators if isinstance(indicators, dict) else {}
-            r1 = ind.get("resistance_20", 0)
-            s1 = ind.get("support_20", 0)
+                    if "resistance" in kl and "resistance_1" not in kl:
+                        res = kl["resistance"]
+                        sup = kl.get("support", [0])
+                        kl["resistance_1"] = res[0] if isinstance(res, list) else res
+                        kl["support_1"] = sup[0] if isinstance(sup, list) else sup
+            else:
+                # Fallback for legacy analyzer
+                report = result.get("report", {})
+                indicators = result.get("indicators", {})
+                cards = report.get("cards", []) if isinstance(report, dict) else []
+                ind = indicators if isinstance(indicators, dict) else {}
+                r1 = ind.get("resistance_20", 0)
+                s1 = ind.get("support_20", 0)
 
-            opinion = {
-                "signal": report.get("final_signal", "HOLD") if isinstance(report, dict) else "HOLD",
-                "confidence": (report.get("composite", 50) / 100) if isinstance(report, dict) else 0.5,
-                "sentiment_score": (report.get("composite", 50) / 100) if isinstance(report, dict) else 0.5,
-                "reasoning": result.get("llm_analysis", ""),
-                "key_points": [c.get("reason", "") for c in cards if c.get("reason")][:5],
-                "key_levels": {
-                    "resistance_1": round(r1, 2),
-                    "resistance_2": round(r1 * 1.03, 2) if r1 else 0,
-                    "support_1": round(s1, 2),
-                    "support_2": round(s1 * 0.97, 2) if s1 else 0,
-                },
-            }
+                opinion = {
+                    "signal": report.get("final_signal", "HOLD") if isinstance(report, dict) else "HOLD",
+                    "confidence": (report.get("composite", 50) / 100) if isinstance(report, dict) else 0.5,
+                    "sentiment_score": (report.get("composite", 50) / 100) if isinstance(report, dict) else 0.5,
+                    "reasoning": result.get("llm_analysis", ""),
+                    "key_points": [c.get("reason", "") for c in cards if c.get("reason")][:5],
+                    "key_levels": {
+                        "resistance_1": round(r1, 2) * (1000 if r1 < 1000 else 1),
+                        "support_1": round(s1, 2) * (1000 if s1 < 1000 else 1),
+                    },
+                }
 
+            # Update cache for streaming
             analysis_stream_cache[symbol] = result.get("llm_analysis", "")
 
             return {
@@ -112,7 +140,6 @@ async def analyze(request: Request):
                 "info": result.get("info", {}),
                 "quote": quote,
                 "llm_analysis": result.get("llm_analysis", ""),
-                "tech_summary": result.get("tech_summary", ""),
                 "opinion": opinion,
                 "is_multi_agent": use_agents,
             }

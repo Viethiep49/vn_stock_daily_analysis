@@ -18,25 +18,61 @@ class MultiAgentAdapter:
             effective_skill = skill or self.skill
             opinion, context = self.pipeline.run(symbol, skill_name=effective_skill)
             
-            # Format the output to be compatible with both main.py and app.py
-            llm_analysis = f"### Final Signal: {opinion.signal}\n**Confidence: {opinion.confidence:.2f}**\n\n{opinion.reasoning}"
-            
-            if context.opinions:
-                llm_analysis += "\n\n---\n### Detailed Agent Opinions"
-                for agent_name, agent_opinion in context.opinions.items():
-                    llm_analysis += f"\n\n**{agent_name.capitalize()} Agent:**\n- Signal: {agent_opinion.signal}\n- Reasoning: {agent_opinion.reasoning}"
+            # Format a professional report
+            signal_color = {
+                "STRONG_BUY": "🟢 STRONG BUY",
+                "BUY": "✅ BUY",
+                "HOLD": "🟡 HOLD",
+                "SELL": "❌ SELL",
+                "STRONG_SELL": "🔴 STRONG SELL"
+            }.get(opinion.signal.value if hasattr(opinion.signal, 'value') else str(opinion.signal), str(opinion.signal))
 
+            report = [
+                f"# Báo Cáo Phân Tích AI: {symbol}",
+                f"## Tín Hiệu: {signal_color}",
+                f"**Độ Tin Cậy:** {opinion.confidence * 100:.1f}% | **Điểm Tâm Lý:** {opinion.sentiment_score}/100",
+                "",
+                "### 🎯 Khuyến Nghị Vận Hành",
+                f"> {opinion.operation_advice}",
+                "",
+                "### 📝 Phân Tích Chi Tiết",
+                opinion.reasoning if not opinion.reasoning.strip().startswith('{') else "Cơ sở phân tích dựa trên sự tổng hợp từ các chuyên gia kỹ thuật và quản trị rủi ro.",
+                "",
+                "### 📊 Các Ngưỡng Quan Trọng",
+            ]
+
+            kl = opinion.key_levels
+            if isinstance(kl, dict):
+                res = kl.get('resistance', kl.get('resistance_1', 'N/A'))
+                sup = kl.get('support', kl.get('support_1', 'N/A'))
+                target = kl.get('target', 'N/A')
+                report.append(f"- **Kháng Cự:** {res}")
+                report.append(f"- **Hỗ Trợ:** {sup}")
+                report.append(f"- **Mục Tiêu:** {target}")
+
+            if context.opinions:
+                report.append("\n---\n### 🤖 Ý Kiến Từ Các Agent Chuyên Gia")
+                for agent_name, agent_opinion in context.opinions.items():
+                    report.append(f"\n**{agent_name.upper()} Agent:**")
+                    report.append(f"- Tín hiệu: {agent_opinion.signal.value if hasattr(agent_opinion.signal, 'value') else str(agent_opinion.signal)}")
+                    # Truncate reasoning for summary
+                    reason = agent_opinion.reasoning
+                    if len(reason) > 200: reason = reason[:200] + "..."
+                    report.append(f"- Nhận định: {reason}")
+
+            llm_analysis = "\n".join(report)
+            
             return {
                 "symbol": symbol,
                 "status": "success",
                 "info": context.data.get("stock_info", {}),
                 "quote": context.data.get("realtime_quote", {}),
                 "circuit_breaker": context.data.get("circuit_breaker", {}), 
-                "tech_summary": "Phân tích bởi Multi-Agent System (Technical + Risk + Decision Agents)",
+                "tech_summary": "Phân tích bởi Multi-Agent System",
                 "llm_analysis": llm_analysis,
                 "is_multi_agent": True,
                 "opinion": {
-                    "signal": opinion.signal,
+                    "signal": opinion.signal.value if hasattr(opinion.signal, 'value') else str(opinion.signal),
                     "confidence": opinion.confidence,
                     "sentiment_score": opinion.sentiment_score,
                     "operation_advice": opinion.operation_advice,

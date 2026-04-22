@@ -48,6 +48,7 @@ class DiscordNotifier(BaseNotifier):
         breakdown_field = None
         risk_field = None
         macro_field = None
+        valuation_field = None
         if report:
             score_field = {
                 "name": "⭐ Score & Signal",
@@ -101,7 +102,6 @@ class DiscordNotifier(BaseNotifier):
                 }
 
             # Add DCF Valuation
-            valuation_field = None
             if report.valuation:
                 v = report.valuation
                 if v.intrinsic_value_per_share or v.grade == "SPECULATIVE":
