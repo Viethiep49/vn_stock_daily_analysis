@@ -250,6 +250,81 @@ def test_no_stop_when_dip_not_breached():
     assert len(stops) == 0, "Stop-loss must not trigger on shallow dip"
 
 
+def test_settlement_blocks_signal_exit_on_next_day():
+    """Buy on day 0, SELL signal on day 1 -> exit must be deferred until day entry+3."""
+    # Strategy: BUY when close < 105, SELL otherwise
+    buy_rule = RuleConfig(when="close < 105", score=80, signal=Signal.BUY, reason="Buy low")
+    sell_rule = RuleConfig(when="close >= 105", score=20, signal=Signal.SELL, reason="Sell high")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="bs", weight=1.0, rules=[buy_rule, sell_rule, default_rule])])
+
+    # Construct prices that force buy on first eligible bar then immediate sell signal
+    n = 300
+    dates = pd.date_range(start="2022-01-01", periods=n, freq="D")
+    close = np.full(n, 100.0)
+    # Make all warmup low (BUY), then jump to 110 right at start of tradeable window
+    tradeable_start_idx = 213  # corresponds to roughly 2022-08-01 with daily freq
+    close[tradeable_start_idx:] = 110.0  # immediately SELL signal on day 1+
+    close[tradeable_start_idx - 1] = 100.0  # last warmup is BUY trigger zone
+    close[tradeable_start_idx - 2] = 100.0
+    # Actually we need BUY on the first tradeable day, so adjust:
+    close[tradeable_start_idx] = 100.0
+    close[tradeable_start_idx + 1:] = 110.0
+    df = pd.DataFrame({
+        "open": close * 0.99, "high": close * 1.01,
+        "low": close * 0.98, "close": close,
+        "volume": np.random.randint(1000, 10000, n),
+    }, index=dates)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+    config = BacktestConfig(
+        symbol="TEST", start="2022-08-01", end="2022-12-31",
+        settlement_days=3, stop_loss_pct=None,  # disable SL to isolate signal/settlement
+    )
+    result = engine.run(config)
+
+    assert len(result.trades) >= 1
+    t = result.trades[0]
+    held = (pd.to_datetime(t.exit_date) - pd.to_datetime(t.entry_date)).days
+    # Settlement of 3 means at least 3 calendar days between entry and exit (with daily bars)
+    assert held >= 3, f"Trade held only {held} days; expected >= 3 due to T+settlement"
+
+
+def test_settlement_blocks_stop_loss_during_lock():
+    """Stop-loss triggered during settlement window must be SUPPRESSED until window ends."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    # Dip on day 1 (during settlement) below -5%, then recovery
+    n = 300
+    dates = pd.date_range(start="2022-01-01", periods=n, freq="D")
+    close = np.linspace(100, 130, n)
+    df = pd.DataFrame({
+        "open": close * 0.99, "high": close * 1.01,
+        "low": close * 0.98, "close": close,
+        "volume": np.random.randint(1000, 10000, n),
+    }, index=dates)
+    # Inject a deep dip on day +1 of tradeable window (entry +1, INSIDE settlement)
+    tradeable_start_idx = 213
+    df.loc[df.index[tradeable_start_idx + 1], "low"] = close[tradeable_start_idx + 1] * 0.85  # -15% dip during T+1
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+    config = BacktestConfig(
+        symbol="TEST", start="2022-08-01", end="2022-12-31",
+        settlement_days=3, stop_loss_pct=-0.05, use_intraday_for_stops=True,
+    )
+    result = engine.run(config)
+
+    if result.trades:
+        t = result.trades[0]
+        # Either no stop fired (because dip was during lock and recovered after) OR
+        # stop fired but only after settlement period elapsed
+        if t.exit_signal == "STOP_LOSS":
+            held = (pd.to_datetime(t.exit_date) - pd.to_datetime(t.entry_date)).days
+            assert held >= 3, f"Stop-loss exit at {held} days but settlement is 3"
+
+
 def test_take_profit_triggers_on_intraday_high():
     """Intraday spike above TP threshold -> exit TAKE_PROFIT at TP price."""
     buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")

@@ -35,6 +35,7 @@ class BacktestConfig:
     stop_loss_pct: Optional[float] = -0.05   # -5% per CLAUDE.md; None disables
     take_profit_pct: Optional[float] = None  # e.g. 0.15 for +15%; None disables
     use_intraday_for_stops: bool = True      # use day's low/high to detect trigger
+    settlement_days: int = 3                 # T+2.5 conservative: cannot exit until idx >= entry_idx + 3
 
 
 @dataclass
@@ -48,6 +49,7 @@ class Trade:
     entry_signal: str = ""
     exit_signal: Optional[str] = None
     shares: int = 0
+    entry_bar_idx: int = -1  # 0-based index within tradeable window; for T+N settlement
 
 
 @dataclass
@@ -110,7 +112,7 @@ class BacktestEngine:
         benchmark_equity = []
 
         # 3. Core Loop
-        for t_date in trade_indices:
+        for bar_idx, t_date in enumerate(trade_indices):
             # Slice up to t (avoid look-ahead bias)
             slice_df = df.loc[:t_date]
             
@@ -145,10 +147,22 @@ class BacktestEngine:
                             entry_date=t_date,
                             entry_price=entry_price,
                             entry_signal=signal,
-                            shares=position
+                            shares=position,
+                            entry_bar_idx=bar_idx,
                         )
             else:
                 # Long -> evaluate exits in priority order: stop-loss > take-profit > signal.
+                # T+2.5 settlement: shares bought on day T cannot be sold until day T+settlement_days.
+                bars_held = bar_idx - current_trade.entry_bar_idx
+                if bars_held < config.settlement_days:
+                    # Locked in settlement; only update equity below.
+                    current_nav = cash + (position * close_price * (1 - config.commission_pct - config.tax_sell_pct) if position > 0 else 0)
+                    equity_values.append(current_nav)
+                    dates.append(t_date)
+                    bench_nav = benchmark_cash + (benchmark_shares * close_price)
+                    benchmark_equity.append(bench_nav)
+                    continue
+
                 bar_row = slice_df.iloc[-1]
                 stop_exit = self._check_stop_exit(
                     config=config,
