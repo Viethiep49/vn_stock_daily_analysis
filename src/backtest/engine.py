@@ -3,11 +3,17 @@ Vectorized walk-forward backtest engine.
 """
 import math
 from dataclasses import dataclass
+from enum import Enum
 from typing import List, Optional, Any
 import pandas as pd
 from src.scoring.indicators import IndicatorEngine
 from src.scoring.strategy_runner import StrategyRunner
 from src.scoring.aggregator import ScoreAggregator
+
+
+class SizingMethod(str, Enum):
+    FIXED = "fixed"
+    ATR_RISK = "atr_risk"
 
 
 @dataclass
@@ -16,7 +22,10 @@ class BacktestConfig:
     start: str                       # YYYY-MM-DD
     end: str
     initial_capital: float = 100_000_000  # 100 triệu VND
-    position_size_pct: float = 1.0   # 100% NAV vào mỗi lệnh (all-in)
+    sizing_method: SizingMethod = SizingMethod.FIXED
+    position_size_pct: float = 0.05  # 5% NAV per trade (FIXED method); matches CLAUDE.md
+    risk_per_trade_pct: float = 0.01  # 1% NAV at risk per trade (ATR_RISK method)
+    max_position_pct: float = 0.20    # cap to 20% NAV regardless of sizing method
     commission_pct: float = 0.0015   # 0.15% phí
     slippage_pct: float = 0.001      # 0.1% slippage
     tax_sell_pct: float = 0.001      # 0.1% thuế bán VN
@@ -116,8 +125,15 @@ class BacktestEngine:
                 if signal in config.entry_signals:
                     entry_price = close_price * (1 + config.slippage_pct)
                     cost_per_share = entry_price * (1 + config.commission_pct)
-                    
-                    shares_to_buy = math.floor((cash * config.position_size_pct) / cost_per_share)
+
+                    nav = cash  # flat -> NAV equals cash
+                    shares_to_buy = self._size_position(
+                        config=config,
+                        nav=nav,
+                        entry_price=entry_price,
+                        cost_per_share=cost_per_share,
+                        indicators=indicators,
+                    )
                     if shares_to_buy > 0:
                         total_cost = shares_to_buy * cost_per_share
                         cash -= total_cost
@@ -183,3 +199,37 @@ class BacktestEngine:
             trades=trades,
             benchmark_equity=benchmark_curve
         )
+
+    def _size_position(
+        self,
+        config: BacktestConfig,
+        nav: float,
+        entry_price: float,
+        cost_per_share: float,
+        indicators: Any,
+    ) -> int:
+        """
+        Compute number of shares to buy.
+
+        FIXED: spend `position_size_pct * NAV`.
+        ATR_RISK: size so a stop-out at `stop_loss_pct` loses ~`risk_per_trade_pct * NAV`.
+                  Falls back to FIXED if stop-loss is not configured.
+
+        Always clamped by `max_position_pct * NAV`.
+        """
+        if cost_per_share <= 0 or nav <= 0:
+            return 0
+
+        max_shares = math.floor((nav * config.max_position_pct) / cost_per_share)
+
+        stop_pct = getattr(config, "stop_loss_pct", None)
+
+        if config.sizing_method == SizingMethod.ATR_RISK and stop_pct:
+            risk_per_share = entry_price * abs(stop_pct)
+            if risk_per_share <= 0:
+                return 0
+            target_shares = math.floor((nav * config.risk_per_trade_pct) / risk_per_share)
+        else:
+            target_shares = math.floor((nav * config.position_size_pct) / cost_per_share)
+
+        return max(0, min(target_shares, max_shares))

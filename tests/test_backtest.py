@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from src.backtest.engine import BacktestEngine, BacktestConfig
+from src.backtest.engine import BacktestEngine, BacktestConfig, SizingMethod
 from src.backtest.metrics import BacktestMetrics
 from src.scoring.indicators import IndicatorEngine
 from src.scoring.strategy_runner import StrategyRunner, StrategyConfig, RuleConfig
@@ -102,6 +102,82 @@ def test_lookahead_bias(simple_strategy):
     # If there was look-ahead bias, it might be hard to detect just from the result,
     # but we've ensured the slice is correct in the implementation.
     assert len(result.equity_curve) > 0
+
+def test_default_sizing_is_5pct():
+    """Default FIXED sizing should buy ~5% of NAV worth of shares (CLAUDE.md)."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    df = create_synthetic_data("uptrend", 300)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+
+    config = BacktestConfig(symbol="TEST", start="2022-08-01", end="2022-10-01", initial_capital=10_000_000)
+    result = engine.run(config)
+
+    assert len(result.trades) >= 1
+    first_trade = result.trades[0]
+    notional = first_trade.shares * first_trade.entry_price
+    # 5% of 10M = 500k; allow margin for rounding & commission
+    assert 350_000 <= notional <= 550_000, f"Expected ~5% of NAV, got {notional:,.0f}"
+
+
+def test_atr_risk_sizing_caps_loss():
+    """ATR_RISK sizing: with -5% stop and 1% risk, position notional should be ~20% of NAV
+    (since 1% / 5% = 20%), then capped by max_position_pct."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    df = create_synthetic_data("uptrend", 300)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+
+    config = BacktestConfig(
+        symbol="TEST",
+        start="2022-08-01",
+        end="2022-10-01",
+        initial_capital=10_000_000,
+        sizing_method=SizingMethod.ATR_RISK,
+        risk_per_trade_pct=0.01,
+        max_position_pct=0.20,
+    )
+    config.stop_loss_pct = -0.05  # set on instance until stop-loss commit lands the field
+    result = engine.run(config)
+
+    assert len(result.trades) >= 1
+    notional = result.trades[0].shares * result.trades[0].entry_price
+    # 1% / 5% = 20% NAV target; max_position_pct caps at 20% — so equality bound
+    # 20% of 10M = 2M, allow margin for rounding/commission/slippage
+    assert 1_700_000 <= notional <= 2_050_000, f"Expected ~20% NAV, got {notional:,.0f}"
+
+
+def test_max_position_pct_caps_size():
+    """When sizing would propose huge size, max_position_pct must cap it."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    df = create_synthetic_data("uptrend", 300)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+
+    # Set position_size_pct = 0.99 but cap at 0.10
+    config = BacktestConfig(
+        symbol="TEST",
+        start="2022-08-01",
+        end="2022-10-01",
+        initial_capital=10_000_000,
+        position_size_pct=0.99,
+        max_position_pct=0.10,
+    )
+    result = engine.run(config)
+    assert len(result.trades) >= 1
+    notional = result.trades[0].shares * result.trades[0].entry_price
+    # Cap is 10% NAV = 1M; allow margin
+    assert notional <= 1_050_000, f"Expected <=10% NAV cap, got {notional:,.0f}"
+
 
 def test_forced_close(exit_strategy):
     # Create data where it stays in BUY for a while then stays in SELL
