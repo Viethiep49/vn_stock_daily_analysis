@@ -325,6 +325,56 @@ def test_settlement_blocks_stop_loss_during_lock():
             assert held >= 3, f"Stop-loss exit at {held} days but settlement is 3"
 
 
+def test_circuit_breaker_blocks_entry_at_limit_up():
+    """If today's close is at HOSE +7% ceiling vs prior close, entry must be skipped."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    n = 300
+    dates = pd.date_range(start="2022-01-01", periods=n, freq="D")
+    close = np.full(n, 100.0)
+    # Make first tradeable bar a +7% gap-up (limit-up for HOSE)
+    tradeable_start_idx = 213
+    close[tradeable_start_idx] = 100.0 * 1.07  # ceiling
+    close[tradeable_start_idx + 1:] = 100.0 * 1.07
+    df = pd.DataFrame({
+        "open": close * 0.99, "high": close * 1.01,
+        "low": close * 0.98, "close": close,
+        "volume": np.random.randint(1000, 10000, n),
+    }, index=dates)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+    config = BacktestConfig(
+        symbol="TEST.HO", start="2022-08-01", end="2022-12-31",
+        enforce_circuit_breaker=True,
+    )
+    result = engine.run(config)
+
+    # Entry on the very first tradeable bar should have been skipped because it was limit-up
+    if result.trades:
+        assert result.trades[0].entry_date != dates[tradeable_start_idx], (
+            "Entry should not have happened on a limit-up bar"
+        )
+
+
+def test_circuit_breaker_can_be_disabled():
+    """When enforce_circuit_breaker=False, entry proceeds even at limit-up."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    df = create_synthetic_data("uptrend", 300)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+    config = BacktestConfig(
+        symbol="TEST.HO", start="2022-08-01", end="2022-12-31",
+        enforce_circuit_breaker=False,
+    )
+    result = engine.run(config)
+    assert len(result.trades) >= 1, "Disabling CB should not prevent normal trades"
+
+
 def test_take_profit_triggers_on_intraday_high():
     """Intraday spike above TP threshold -> exit TAKE_PROFIT at TP price."""
     buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")

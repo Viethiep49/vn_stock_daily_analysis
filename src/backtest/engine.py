@@ -9,6 +9,7 @@ import pandas as pd
 from src.scoring.indicators import IndicatorEngine
 from src.scoring.strategy_runner import StrategyRunner
 from src.scoring.aggregator import ScoreAggregator
+from src.market.circuit_breaker import CircuitBreakerHandler
 
 
 class SizingMethod(str, Enum):
@@ -36,6 +37,7 @@ class BacktestConfig:
     take_profit_pct: Optional[float] = None  # e.g. 0.15 for +15%; None disables
     use_intraday_for_stops: bool = True      # use day's low/high to detect trigger
     settlement_days: int = 3                 # T+2.5 conservative: cannot exit until idx >= entry_idx + 3
+    enforce_circuit_breaker: bool = True     # block fills at limit-up (entry) / limit-down (exit)
 
 
 @dataclass
@@ -70,11 +72,13 @@ class BacktestEngine:
         strategy_runner: StrategyRunner,
         aggregator: ScoreAggregator,
         indicator_engine: IndicatorEngine,
+        circuit_breaker: Optional[CircuitBreakerHandler] = None,
     ):
         self.data_provider = data_provider
         self.strategy_runner = strategy_runner
         self.aggregator = aggregator
         self.indicator_engine = indicator_engine
+        self.circuit_breaker = circuit_breaker or CircuitBreakerHandler()
 
     def run(self, config: BacktestConfig) -> BacktestResult:
         # 1. Load data. Fetch extra for warmup.
@@ -115,19 +119,23 @@ class BacktestEngine:
         for bar_idx, t_date in enumerate(trade_indices):
             # Slice up to t (avoid look-ahead bias)
             slice_df = df.loc[:t_date]
-            
+
             # Compute indicators & signal
             indicators = self.indicator_engine.compute(slice_df)
             cards = self.strategy_runner.run(indicators)
             report = self.aggregator.aggregate(cards)
             signal = report.final_signal.name
-            
+
             close_price = float(slice_df.iloc[-1]["close"])
-            
+            limit_status = self._check_price_limit(config, slice_df) if config.enforce_circuit_breaker else None
+
             # Action logic
             if position == 0:
                 # Flat -> Entry?
-                if signal in config.entry_signals:
+                # Circuit breaker: cannot reliably fill at limit-up
+                if limit_status and limit_status.get("is_limit_up"):
+                    pass  # skip entry on limit-up
+                elif signal in config.entry_signals:
                     entry_price = close_price * (1 + config.slippage_pct)
                     cost_per_share = entry_price * (1 + config.commission_pct)
 
@@ -181,6 +189,11 @@ class BacktestEngine:
                     raw_exit_price = close_price
                     exit_label = signal
 
+                # Circuit breaker: cannot reliably fill exit at limit-down
+                if exit_label is not None and limit_status and limit_status.get("is_limit_down"):
+                    exit_label = None
+                    raw_exit_price = None
+
                 if exit_label is not None:
                     exit_price = raw_exit_price * (1 - config.slippage_pct)
                     proceeds = position * exit_price * (1 - config.commission_pct - config.tax_sell_pct)
@@ -232,6 +245,21 @@ class BacktestEngine:
             trades=trades,
             benchmark_equity=benchmark_curve
         )
+
+    def _check_price_limit(self, config: BacktestConfig, slice_df: pd.DataFrame) -> Optional[dict]:
+        """
+        Use prior bar's close as reference price; compare today's close to ceiling/floor.
+        Returns the status dict from CircuitBreakerHandler, or None if insufficient history.
+        """
+        if len(slice_df) < 2:
+            return None
+        prior_close = float(slice_df.iloc[-2]["close"])
+        today_close = float(slice_df.iloc[-1]["close"])
+        try:
+            self.circuit_breaker.set_reference_price(config.symbol, prior_close)
+            return self.circuit_breaker.check_limit_status(config.symbol, today_close)
+        except (ValueError, AttributeError):
+            return None
 
     def _check_stop_exit(
         self,
