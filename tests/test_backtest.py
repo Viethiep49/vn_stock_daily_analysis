@@ -179,6 +179,98 @@ def test_max_position_pct_caps_size():
     assert notional <= 1_050_000, f"Expected <=10% NAV cap, got {notional:,.0f}"
 
 
+def _make_data_with_dip(dip_day: int, dip_pct: float, n: int = 80) -> pd.DataFrame:
+    """Synthetic uptrend with a single intraday dip on `dip_day` (0-indexed)."""
+    dates = pd.date_range(start="2022-01-01", periods=n, freq="D")
+    close = np.linspace(100, 130, n)
+    df = pd.DataFrame({
+        "open": close * 0.99,
+        "high": close * 1.01,
+        "low": close * 0.98,
+        "close": close,
+        "volume": np.random.randint(1000, 10000, n),
+    }, index=dates)
+    # Inject a deep dip on dip_day (intraday low) without altering close.
+    df.loc[df.index[dip_day], "low"] = close[dip_day] * (1 + dip_pct)
+    return df
+
+
+def _make_data_with_spike(spike_day: int, spike_pct: float, n: int = 80) -> pd.DataFrame:
+    dates = pd.date_range(start="2022-01-01", periods=n, freq="D")
+    close = np.linspace(100, 110, n)
+    df = pd.DataFrame({
+        "open": close * 0.99,
+        "high": close * 1.01,
+        "low": close * 0.98,
+        "close": close,
+        "volume": np.random.randint(1000, 10000, n),
+    }, index=dates)
+    df.loc[df.index[spike_day], "high"] = close[spike_day] * (1 + spike_pct)
+    return df
+
+
+def test_stop_loss_triggers_on_intraday_low():
+    """Trade entered, intraday low breaches -5% stop -> exit STOP_LOSS at stop price."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    # Dip 8% intraday on day 250 (well into the tradeable window)
+    df = _make_data_with_dip(dip_day=250, dip_pct=-0.08, n=300)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+    config = BacktestConfig(
+        symbol="TEST", start="2022-08-01", end="2022-12-31",
+        stop_loss_pct=-0.05, use_intraday_for_stops=True,
+    )
+    result = engine.run(config)
+
+    stops = [t for t in result.trades if t.exit_signal == "STOP_LOSS"]
+    assert len(stops) >= 1, "Expected at least one stop-loss exit"
+    # Verify stopped near -5% of entry (allow slippage tolerance)
+    s = stops[0]
+    realized_loss = (s.exit_price / s.entry_price) - 1
+    assert -0.07 <= realized_loss <= -0.04, f"Loss {realized_loss:.3%} outside expected -5% +/- slippage band"
+
+
+def test_no_stop_when_dip_not_breached():
+    """Small dip that does not breach stop should NOT trigger STOP_LOSS."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    # 2% dip — well inside -5% stop
+    df = _make_data_with_dip(dip_day=250, dip_pct=-0.02, n=300)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+    config = BacktestConfig(symbol="TEST", start="2022-08-01", end="2022-12-31", stop_loss_pct=-0.05)
+    result = engine.run(config)
+
+    stops = [t for t in result.trades if t.exit_signal == "STOP_LOSS"]
+    assert len(stops) == 0, "Stop-loss must not trigger on shallow dip"
+
+
+def test_take_profit_triggers_on_intraday_high():
+    """Intraday spike above TP threshold -> exit TAKE_PROFIT at TP price."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="always_buy", weight=1.0, rules=[buy_rule, default_rule])])
+
+    df = _make_data_with_spike(spike_day=250, spike_pct=0.20, n=300)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+    config = BacktestConfig(
+        symbol="TEST", start="2022-08-01", end="2022-12-31",
+        stop_loss_pct=None, take_profit_pct=0.10,
+    )
+    result = engine.run(config)
+
+    tps = [t for t in result.trades if t.exit_signal == "TAKE_PROFIT"]
+    assert len(tps) >= 1, "Expected at least one take-profit exit"
+    realized = (tps[0].exit_price / tps[0].entry_price) - 1
+    assert 0.08 <= realized <= 0.12, f"TP exit at {realized:.3%}, expected ~10%"
+
+
 def test_forced_close(exit_strategy):
     # Create data where it stays in BUY for a while then stays in SELL
     # Wait, exit_strategy: Buy if < 150, Sell if >= 150.

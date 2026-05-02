@@ -32,6 +32,9 @@ class BacktestConfig:
     entry_signals: tuple = ("STRONG_BUY", "BUY")
     exit_signals: tuple = ("STRONG_SELL", "SELL", "SELL_WEAK")
     hold_on_neutral: bool = True
+    stop_loss_pct: Optional[float] = -0.05   # -5% per CLAUDE.md; None disables
+    take_profit_pct: Optional[float] = None  # e.g. 0.15 for +15%; None disables
+    use_intraday_for_stops: bool = True      # use day's low/high to detect trigger
 
 
 @dataclass
@@ -145,20 +148,36 @@ class BacktestEngine:
                             shares=position
                         )
             else:
-                # Long -> Exit?
-                if signal in config.exit_signals:
-                    exit_price = close_price * (1 - config.slippage_pct)
-                    # Tax and commission on sell
+                # Long -> evaluate exits in priority order: stop-loss > take-profit > signal.
+                bar_row = slice_df.iloc[-1]
+                stop_exit = self._check_stop_exit(
+                    config=config,
+                    entry_price=current_trade.entry_price,
+                    bar_high=float(bar_row.get("high", bar_row["close"])),
+                    bar_low=float(bar_row.get("low", bar_row["close"])),
+                    bar_close=close_price,
+                )
+
+                exit_label: Optional[str] = None
+                raw_exit_price: Optional[float] = None
+
+                if stop_exit is not None:
+                    raw_exit_price, exit_label = stop_exit
+                elif signal in config.exit_signals:
+                    raw_exit_price = close_price
+                    exit_label = signal
+
+                if exit_label is not None:
+                    exit_price = raw_exit_price * (1 - config.slippage_pct)
                     proceeds = position * exit_price * (1 - config.commission_pct - config.tax_sell_pct)
-                    
                     cash += proceeds
-                    
+
                     current_trade.exit_date = t_date
                     current_trade.exit_price = exit_price
-                    current_trade.exit_signal = signal
+                    current_trade.exit_signal = exit_label
                     current_trade.pnl_pct = (exit_price / current_trade.entry_price) - 1
                     current_trade.hold_days = (pd.to_datetime(t_date) - pd.to_datetime(current_trade.entry_date)).days
-                    
+
                     trades.append(current_trade)
                     position = 0
                     current_trade = None
@@ -199,6 +218,41 @@ class BacktestEngine:
             trades=trades,
             benchmark_equity=benchmark_curve
         )
+
+    def _check_stop_exit(
+        self,
+        config: BacktestConfig,
+        entry_price: float,
+        bar_high: float,
+        bar_low: float,
+        bar_close: float,
+    ) -> Optional[tuple]:
+        """
+        Decide whether stop-loss or take-profit triggers on this bar.
+        Returns (raw_fill_price, exit_label) or None.
+
+        When intraday is enabled, uses bar_low for stop and bar_high for TP
+        (i.e. assumes the worst-case touch at the configured level). If the
+        bar opened past the level, the stop is filled at the configured
+        threshold rather than the gap-down price — a deliberate optimistic
+        approximation since we don't model open/gap separately here.
+        """
+        sl_pct = config.stop_loss_pct
+        tp_pct = config.take_profit_pct
+
+        if sl_pct is not None:
+            stop_price = entry_price * (1 + sl_pct)
+            trigger_price = bar_low if config.use_intraday_for_stops else bar_close
+            if trigger_price <= stop_price:
+                return (stop_price, "STOP_LOSS")
+
+        if tp_pct is not None:
+            tp_price = entry_price * (1 + tp_pct)
+            trigger_price = bar_high if config.use_intraday_for_stops else bar_close
+            if trigger_price >= tp_price:
+                return (tp_price, "TAKE_PROFIT")
+
+        return None
 
     def _size_position(
         self,
