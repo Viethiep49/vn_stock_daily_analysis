@@ -417,3 +417,101 @@ def test_forced_close(exit_strategy):
     
     assert len(result.trades) == 1
     assert result.trades[0].exit_signal == "FORCED_CLOSE"
+
+
+# ---------------------------------------------------------------------------
+# Walk-forward tests
+# ---------------------------------------------------------------------------
+from src.backtest.walkforward import WalkForwardValidator, WalkForwardConfig
+
+
+def _make_engine(runner):
+    df = create_synthetic_data("uptrend", n=1200)  # ~3.3 years of daily bars
+    provider = MockDataProvider(df)
+    return BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine()), df
+
+
+def test_walkforward_produces_min_folds():
+    """3-year synthetic data with 365d train + 90d test should produce >= 2 folds."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="wf_strat", weight=1.0, rules=[buy_rule, default_rule])])
+
+    engine, df = _make_engine(runner)
+    base_config = BacktestConfig(
+        symbol="TEST",
+        start=df.index[0].strftime("%Y-%m-%d"),
+        end=df.index[-1].strftime("%Y-%m-%d"),
+        stop_loss_pct=None,
+    )
+    wf_config = WalkForwardConfig(train_days=365, test_days=90, step_days=90, min_folds=2)
+    validator = WalkForwardValidator(engine)
+    result = validator.run(base_config, wf_config)
+
+    assert len(result.folds) >= 2, f"Expected >= 2 folds, got {len(result.folds)}"
+
+
+def test_walkforward_summaries_populated():
+    """Summaries must contain at least sharpe and total_return_pct entries."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="wf_strat2", weight=1.0, rules=[buy_rule, default_rule])])
+
+    engine, df = _make_engine(runner)
+    base_config = BacktestConfig(
+        symbol="TEST",
+        start=df.index[0].strftime("%Y-%m-%d"),
+        end=df.index[-1].strftime("%Y-%m-%d"),
+        stop_loss_pct=None,
+    )
+    wf_config = WalkForwardConfig(train_days=365, test_days=90, step_days=90, min_folds=2)
+    validator = WalkForwardValidator(engine)
+    result = validator.run(base_config, wf_config)
+
+    summary_names = {s.metric_name for s in result.summaries}
+    assert "total_return_pct" in summary_names
+    assert "sharpe" in summary_names
+
+
+def test_walkforward_too_short_raises():
+    """Period shorter than train+test should raise ValueError."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="wf_short", weight=1.0, rules=[buy_rule, default_rule])])
+
+    df = create_synthetic_data("uptrend", n=200)
+    provider = MockDataProvider(df)
+    engine = BacktestEngine(provider, runner, ScoreAggregator(), IndicatorEngine())
+
+    base_config = BacktestConfig(
+        symbol="TEST",
+        start=df.index[0].strftime("%Y-%m-%d"),
+        end=df.index[-1].strftime("%Y-%m-%d"),
+    )
+    wf_config = WalkForwardConfig(train_days=365, test_days=90, step_days=90, min_folds=2)
+    validator = WalkForwardValidator(engine)
+    with pytest.raises(ValueError):
+        validator.run(base_config, wf_config)
+
+
+def test_walkforward_fold_dates_are_sequential():
+    """Each fold's test_start must be >= previous fold's test_end."""
+    buy_rule = RuleConfig(when="close > 0", score=80, signal=Signal.BUY, reason="Always buy")
+    default_rule = RuleConfig(default=True, score=50, signal=Signal.NEUTRAL, reason="Default")
+    runner = StrategyRunner([StrategyConfig(name="wf_seq", weight=1.0, rules=[buy_rule, default_rule])])
+
+    engine, df = _make_engine(runner)
+    base_config = BacktestConfig(
+        symbol="TEST",
+        start=df.index[0].strftime("%Y-%m-%d"),
+        end=df.index[-1].strftime("%Y-%m-%d"),
+        stop_loss_pct=None,
+    )
+    wf_config = WalkForwardConfig(train_days=365, test_days=90, step_days=90, min_folds=2)
+    validator = WalkForwardValidator(engine)
+    result = validator.run(base_config, wf_config)
+
+    for i in range(1, len(result.folds)):
+        prev_end = pd.to_datetime(result.folds[i - 1].test_end)
+        curr_start = pd.to_datetime(result.folds[i].test_start)
+        assert curr_start >= prev_end, f"Fold {i} starts {curr_start} before fold {i-1} ends {prev_end}"
