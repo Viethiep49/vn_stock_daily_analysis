@@ -16,6 +16,7 @@ from src.scoring.indicators import IndicatorEngine
 from src.backtest.engine import BacktestEngine, BacktestConfig
 from src.backtest.metrics import BacktestMetrics
 from src.backtest.report import BacktestReporter
+from src.backtest.walkforward import WalkForwardValidator, WalkForwardConfig
 
 
 def main():

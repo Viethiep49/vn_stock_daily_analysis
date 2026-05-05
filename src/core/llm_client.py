@@ -17,7 +17,8 @@ class LiteLLMClient:
         return bool(
             os.getenv("OPENROUTER_API_KEY") or 
             os.getenv("GEMINI_API_KEY") or 
-            os.getenv("OPENAI_API_KEY")
+            os.getenv("OPENAI_API_KEY") or
+            os.getenv("MIMO_API_KEY")
         )
 
     def generate(
@@ -65,6 +66,12 @@ class LiteLLMClient:
                 if openrouter_key and target_model.startswith("openrouter/"):
                     kwargs["api_key"] = openrouter_key
                     kwargs["extra_body"] = {"include_reasoning": True}
+                
+                mimo_key = os.getenv("MIMO_API_KEY")
+                mimo_base = os.getenv("MIMO_BASE_URL")
+                if mimo_key and target_model.startswith("openai/mimo"):
+                    kwargs["api_key"] = mimo_key
+                    kwargs["api_base"] = mimo_base
                 
                 response = completion(**kwargs)
                 
